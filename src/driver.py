@@ -3,6 +3,7 @@ import argparse
 import os
 import lexer
 import parser as p
+import asm
 
 
 def handle_args():
@@ -29,11 +30,18 @@ def handle_args():
         x = p.parse_program(result, 0)
         if x is None:
             raise ValueError("Failed to parse a program")
-        elif len(result) > x[1]:
-            raise ValueError("Extra code after parsing")
+        # elif len(result) > x[1]:
+        #     raise ValueError("Extra code after parsing")
 
     elif args.codegen:
         print(f'codegen {args.filepath}')
+        result = lexer.tokenize_file(args.filepath)
+        result = p.parse_program(result, 0)
+        if result is None:
+            raise ValueError("Failed to parse program")
+        print(result)
+        ast_asm = asm.parse_program(result)
+        print(ast_asm)
     else:
         print('Reaching this should not be possible')
 

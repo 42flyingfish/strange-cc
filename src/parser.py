@@ -7,6 +7,7 @@ import lexer
 class Constant:
     val: str
 
+
 @dataclass
 class Identifier:
     val: str
@@ -17,9 +18,7 @@ class Return:
     exp: Constant
 
 
-@dataclass
-class Statement:
-    exp: Return
+type Statement = Return
 
 
 @dataclass
@@ -117,8 +116,11 @@ def parse_function(t: list[lexer.Token],
 
 
 def parse_program(t: list[lexer.Token],
-                  index: int) -> tuple[Program, int] | None:
+                  index: int) -> Program | None:
     ret = parse_function(t, index)
     if (ret is None):
         return None
-    return (Program(ret[0]), ret[1])
+    func, num = ret
+    if num < len(t):
+        return None
+    return Program(func)

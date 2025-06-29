@@ -198,10 +198,3 @@ def tokenize_file(filepath: str) -> list[Token]:
     with open(filepath, 'r') as f:
         result = list(chain(*(tokenize_string(line) for line in f)))
         return result
-
-
-if __name__ == '__main__':
-    with open('./hello.c') as source:
-        for line in source:
-            for tokens in tokenize_string(line):
-                print(tokens)

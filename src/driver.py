@@ -39,7 +39,7 @@ def handle_args():
         err_msg = f'GCC failed to preprocess the file: {result.stderr}'
         raise RuntimeError(err_msg)
 
-    lex_result = lexer.tokenize_file(args.filepath)
+    lex_result = lexer.tokenize_file(preprocessed_output)
     if args.lex:
         return
     x = p.parse_program(lex_result, 0)

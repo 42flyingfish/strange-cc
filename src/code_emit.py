@@ -21,9 +21,9 @@ def process_node(x) -> list[str]:
             for instruction in instructions:
                 result.extend(process_node(instruction))
         case asm.Mov(src, dst):
-            result.append(f'\tMOV {decode_op(src)}, {decode_op(dst)}\n')
+            result.append(f'\tmovl {decode_op(src)}, {decode_op(dst)}\n')
         case asm.Ret():
-            result.append('\tRET\n')
+            result.append('\tret\n')
         case _:
             result.append('ERROR DETECTED\n')
     return result

@@ -24,6 +24,21 @@ def handle_args():
         print(f'File not found {args.filepath}')
         return
 
+    file_basename = os.path.splitext(os.path.basename(args.filepath))[0]
+    directory = os.path.dirname(args.filepath)
+    preprocessed_file = f'{file_basename}.i'
+    preprocessed_output = os.path.join(directory, preprocessed_file)
+
+    gcc_command = ['gcc', '-E', '-P', args.filepath, '-o', preprocessed_output]
+
+    result = subprocess.run(gcc_command,
+                            capture_output=True,
+                            text=True)
+
+    if result.returncode != 0:
+        err_msg = f'GCC failed to preprocess the file: {result.stderr}'
+        raise RuntimeError(err_msg)
+
     lex_result = lexer.tokenize_file(args.filepath)
     if args.lex:
         return
@@ -36,23 +51,22 @@ def handle_args():
     if args.codegen:
         return
     blah = code_emit.process_node(ast_asm)
-    directory = os.path.dirname(args.filepath)
-    filename = os.path.splitext(os.path.basename(args.filepath))[0]
-    asm_file_output = f'{filename}.s'
-    asm_file_output = os.path.join(directory, f'{filename}.s')
-    bin_file_output = os.path.join(directory, filename)
+    asm_file_output = f'{file_basename}.s'
+    asm_file_output = os.path.join(directory, f'{file_basename}.s')
+    bin_file_output = os.path.join(directory, file_basename)
 
     with open(asm_file_output, 'w') as output:
         output.writelines(blah)
 
     gcc_command = ['gcc', '-o', bin_file_output, asm_file_output]
 
-    compile_result = subprocess.run(gcc_command,
-                                    capture_output=True,
-                                    text=True)
+    result = subprocess.run(gcc_command,
+                            capture_output=True,
+                            text=True)
 
-    if compile_result.returncode != 0:
-        print(f"GCC failed to compile {asm_file_output}: {compile_result.stderr}")
+    if result.returncode != 0:
+        err_msg = f'GCC failed to compile {asm_file_output}: {result.stderr}'
+        raise RuntimeError(err_msg)
 
 
 if __name__ == '__main__':

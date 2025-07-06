@@ -179,7 +179,7 @@ def tokenize_string(line: str) -> list[Token]:
             case c if c in whitespace:
                 # TODO Handle whitespace for strings
                 index += 1
-            case '0' | '1' | '2' | '3' | '5' | '6' | '7' | '8' | '9':
+            case '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9':
                 # TODO Start of a constant token
                 # Output should either be a valid constant or an invalid token
                 thing = parse_constant(line[index:])

@@ -49,6 +49,16 @@ class TkMinus:
 
 
 @dataclass
+class TkDecrement:
+    pass
+
+
+@dataclass
+class TkTilde:
+    pass
+
+
+@dataclass
 class TkForwardSlash:
     pass
 
@@ -99,6 +109,8 @@ Token = (TkOpenParenthesis
          | TkStar
          | TkColon
          | TkMinus
+         | TkDecrement
+         | TkTilde
          | TkInt
          | TkVoid
          | TkReturn
@@ -162,7 +174,16 @@ def tokenize_string(line: str) -> list[Token]:
                     return token_list
                 token_list.append(TkForwardSlash())
             case '-':
-                token_list.append(TkMinus())
+                index += 1
+                # checking for --
+                if index <= len(line) and line[index] == '-':
+                    token_list.append(TkDecrement())
+                    index += 1
+                else:
+                    token_list.append(TkMinus())
+                index += 1
+            case '~':
+                token_list.append(TkTilde())
                 index += 1
             case ':':
                 token_list.append(TkColon())

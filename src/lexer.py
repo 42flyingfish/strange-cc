@@ -181,7 +181,6 @@ def tokenize_string(line: str) -> list[Token]:
                     index += 1
                 else:
                     token_list.append(TkMinus())
-                index += 1
             case '~':
                 token_list.append(TkTilde())
                 index += 1

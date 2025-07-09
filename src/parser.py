@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Type, cast
+from enum import Enum, auto
 import lexer
 
 
@@ -13,9 +14,23 @@ class Identifier:
     val: str
 
 
+class Unary_Operator(Enum):
+    NEGATION = auto()
+    COMPLEMENT = auto()
+
+
+@dataclass
+class Unary:
+    unary_operator: Unary_Operator
+    exp: 'Expression'
+
+
+Expression = Unary | Constant
+
+
 @dataclass
 class Return:
-    exp: Constant
+    exp: Expression
 
 
 type Statement = Return
@@ -74,14 +89,54 @@ def parse_return(t: list[lexer.Token],
     if not expect_tk(lexer.TkReturn, t, index):
         return None
     index += 1
-    ret = parse_constant(t, index)
+    ret = parse_expr(t, index)
     if ret is None:
+        raise RuntimeError(f'No expression {t[index]}')
         return None
-    index += 1
+    expr, index = ret
     if not expect_tk(lexer.TkSemicolon, t, index):
         return None
     index += 1
-    return (Return(ret[0]), index)
+    return (Return(expr), index)
+
+
+def parse_expr(t: list[lexer.Token],
+               index: int) -> tuple[Expression, int] | None:
+    if (index >= len(t)):
+        return None
+    match t[index]:
+        case lexer.TkOpenParenthesis():
+            index += 1
+            result = parse_expr(t, index)
+            if result is None:
+                return None
+            inner_expr, index = result
+            if not expect_tk(lexer.TkCloseParenthesis, t, index):
+                return None
+            index += 1
+            return (inner_expr, index)
+        case lexer.TkMinus():
+            print('Minus world')
+            index += 1
+            result = parse_expr(t, index)
+            if result is None:
+                print(f'No sub expression {t[index-1]} and then {t[index]}')
+                return None
+            inner_expr, index = result
+            return Unary(Unary_Operator.NEGATION, inner_expr), index
+        case lexer.TkTilde():
+            index += 1
+            result = parse_expr(t, index)
+            if result is None:
+                return None
+            inner_expr, index = result
+            return Unary(Unary_Operator.COMPLEMENT, inner_expr), index
+        case lexer.TkConstant():
+            print(f'Got constant {t[index]}')
+            return parse_constant(t, index)
+        case _:
+            print(f'Default {t[index]}')
+            return None
 
 
 def parse_function(t: list[lexer.Token],

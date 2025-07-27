@@ -6,6 +6,7 @@ import parser as p
 import asm
 import code_emit
 import subprocess
+import tacky
 
 
 def handle_args():
@@ -15,6 +16,7 @@ def handle_args():
     group.add_argument('--lex', action='store_true')
     group.add_argument('--parse', action='store_true')
     group.add_argument('--codegen', action='store_true')
+    group.add_argument('--tacky', action='store_true')
 
     parser.add_argument('filepath', type=str)
 
@@ -46,6 +48,10 @@ def handle_args():
     if x is None:
         raise ValueError('Failed to parse a program')
     if args.parse:
+        return
+    # TODO make use of the TACKY Immediate Representation
+    _ = tacky.emit_tack_program(x)
+    if args.tacky:
         return
     ast_asm = asm.parse_program(x)
     if args.codegen:

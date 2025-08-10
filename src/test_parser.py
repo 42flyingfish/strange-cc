@@ -1,6 +1,6 @@
+import parser
 import unittest
 import lexer
-import parser
 
 
 class TestConstantParser(unittest.TestCase):

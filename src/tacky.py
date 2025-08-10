@@ -1,8 +1,7 @@
+import parser
 from dataclasses import dataclass
 from enum import Enum, auto
 from itertools import count
-import parser
-
 
 # Nasty Global for use below
 counter = count()

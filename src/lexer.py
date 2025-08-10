@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from string import whitespace, digits, ascii_letters
 from itertools import chain, takewhile
+from string import ascii_letters, digits, whitespace
 
 
 @dataclass

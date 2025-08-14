@@ -23,7 +23,7 @@ class Constant:
 
 @dataclass
 class Var:
-    x: str
+    identifier: str
 
 
 Val = Constant | Var

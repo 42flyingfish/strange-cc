@@ -1,11 +1,12 @@
 #! /bin/python
 import argparse
 import os
-import lexer
 import parser as p
+import subprocess
+
 import asm
 import code_emit
-import subprocess
+import lexer
 import tacky
 
 

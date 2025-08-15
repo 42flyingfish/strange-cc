@@ -51,13 +51,14 @@ def handle_args():
     if args.parse:
         return
     # TODO make use of the TACKY Immediate Representation
-    _ = tacky.emit_tack_program(x)
+    tacky_ast = tacky.emit_tack_program(x)
     if args.tacky:
         return
-    ast_asm = asm.parse_program(x)
+
+    asm_ast = asm.emit_asm_ast(tacky_ast)
     if args.codegen:
         return
-    blah = code_emit.process_node(ast_asm)
+    blah = code_emit.process_node(asm_ast)
     asm_file_output = f'{file_basename}.s'
     asm_file_output = os.path.join(directory, f'{file_basename}.s')
     bin_file_output = os.path.join(directory, file_basename)

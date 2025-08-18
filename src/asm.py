@@ -108,13 +108,19 @@ def convert_tacky_instr(node: tacky.Instruction) -> Iterable[Instruction]:
             raise RuntimeError(f'Unhandled Instruction {node}')
 
 
-def convert_tacky(node) -> Program | Function:
+def convert_tacky_function(node: tacky.Function) -> Function:
     match node:
-        case tacky.Program(func):
-            return Program(convert_tacky(func))
         case tacky.Function(name, instr):
             asm_instr = [x for y in instr for x in convert_tacky_instr(y)]
             return Function(name, asm_instr)
+        case _:
+            raise RuntimeError(f'Unhandled node {node}')
+
+
+def convert_tacky(node) -> Program:
+    match node:
+        case tacky.Program(func):
+            return Program(convert_tacky_function(func))
         case _:
             raise RuntimeError(f'Unhandled node {node}')
 

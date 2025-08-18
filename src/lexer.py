@@ -64,7 +64,7 @@ class TkForwardSlash:
 
 
 @dataclass
-class TkStar:
+class TkAsterisk:
     pass
 
 
@@ -98,6 +98,16 @@ class TkIdentifier:
     val: str
 
 
+@dataclass
+class TkPlus:
+    pass
+
+
+@dataclass
+class TkPercent:
+    pass
+
+
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace
@@ -106,7 +116,7 @@ Token = (TkOpenParenthesis
          | TkComma
          | TkForwardSlash
          | TkBackSlash
-         | TkStar
+         | TkAsterisk
          | TkColon
          | TkMinus
          | TkDecrement
@@ -115,7 +125,9 @@ Token = (TkOpenParenthesis
          | TkVoid
          | TkReturn
          | TkConstant
-         | TkIdentifier)
+         | TkIdentifier
+         | TkPlus
+         | TkPercent)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -191,10 +203,16 @@ def tokenize_string(line: str) -> list[Token]:
                 token_list.append(TkBackSlash())
                 index += 1
             case '*':
-                token_list.append(TkStar())
+                token_list.append(TkAsterisk())
                 index += 1
             case ',':
                 token_list.append(TkComma())
+                index += 1
+            case '+':
+                token_list.append(TkPlus())
+                index += 1
+            case '%':
+                token_list.append(TkPercent())
                 index += 1
             case c if c in whitespace:
                 # TODO Handle whitespace for strings

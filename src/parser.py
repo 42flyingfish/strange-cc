@@ -1,6 +1,8 @@
+
 from dataclasses import dataclass
-from typing import Type, cast
 from enum import Enum, auto
+from typing import Type
+
 import lexer
 
 
@@ -19,13 +21,29 @@ class Unary_Operator(Enum):
     COMPLEMENT = auto()
 
 
+class Bin_Op(Enum):
+    """Binary Operators"""
+    ADD = auto()
+    SUBTRACT = auto()
+    MULTIPLY = auto()
+    DIVIDE = auto()
+    REMAINDER = auto()
+
+
 @dataclass
 class Unary:
     unary_operator: Unary_Operator
     exp: 'Expression'
 
 
-Expression = Unary | Constant
+@dataclass
+class Binary:
+    binary_operator: Bin_Op
+    left: 'Expression'
+    right: 'Expression'
+
+
+Expression = Unary | Constant | Binary
 
 
 @dataclass
@@ -70,18 +88,24 @@ def expect_tk(kind: Type,
 
 def parse_constant(t: list[lexer.Token],
                    index: int) -> tuple[Constant, int] | None:
-    if expect_tk(lexer.TkConstant, t, index):
-        tok = cast(lexer.TkConstant, t[index])
-        return (Constant(tok.val), index+1)
-    return None
+    if index >= len(t):
+        return None
+    match t[index]:
+        case lexer.TkConstant(val):
+            return Constant(val), index+1
+        case _:
+            return None
 
 
 def parse_identifier(t: list[lexer.Token],
                      index: int) -> tuple[Identifier, int] | None:
-    if expect_tk(lexer.TkIdentifier, t, index):
-        tok = cast(lexer.TkIdentifier, t[index])
-        return (Identifier(tok.val), index+1)
-    return None
+    if index >= len(t):
+        return None
+    match t[index]:
+        case lexer.TkIdentifier(val):
+            return Identifier(val), index+1
+        case _:
+            return None
 
 
 def parse_return(t: list[lexer.Token],
@@ -100,11 +124,36 @@ def parse_return(t: list[lexer.Token],
     return (Return(expr), index)
 
 
-def parse_expr(t: list[lexer.Token],
-               index: int) -> tuple[Expression, int] | None:
+def parse_uop(t: list[lexer.Token],
+              index: int) -> tuple[Unary_Operator, int] | None:
+    if index >= len(t):
+        return None
+    match t[index]:
+        case lexer.TkTilde():
+            return Unary_Operator.COMPLEMENT, index+1
+        case lexer.TkMinus():
+            return Unary_Operator.NEGATION, index+1
+        case _:
+            None
+
+
+def parse_factor(t: list[lexer.Token],
+                 index: int) -> tuple[Expression, int] | None:
     if (index >= len(t)):
         return None
     match t[index]:
+        case lexer.TkConstant():
+            return parse_constant(t, index)
+        case lexer.TkMinus() | lexer.TkTilde():
+            op = parse_uop(t, index)
+            if op is None:
+                return None
+            operator, index = op
+            result = parse_factor(t, index)
+            if result is None:
+                return None
+            inner_expr, index = result
+            return Unary(operator, inner_expr), index
         case lexer.TkOpenParenthesis():
             index += 1
             result = parse_expr(t, index)
@@ -115,28 +164,48 @@ def parse_expr(t: list[lexer.Token],
                 return None
             index += 1
             return (inner_expr, index)
-        case lexer.TkMinus():
-            print('Minus world')
-            index += 1
-            result = parse_expr(t, index)
-            if result is None:
-                print(f'No sub expression {t[index-1]} and then {t[index]}')
-                return None
-            inner_expr, index = result
-            return Unary(Unary_Operator.NEGATION, inner_expr), index
-        case lexer.TkTilde():
-            index += 1
-            result = parse_expr(t, index)
-            if result is None:
-                return None
-            inner_expr, index = result
-            return Unary(Unary_Operator.COMPLEMENT, inner_expr), index
-        case lexer.TkConstant():
-            print(f'Got constant {t[index]}')
-            return parse_constant(t, index)
         case _:
             print(f'Default {t[index]}')
             return None
+
+
+def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:
+    if index >= len(t):
+        return None
+    match t[index]:
+        case lexer.TkPlus():
+            return Bin_Op.ADD, index+1
+        case lexer.TkMinus():
+            return Bin_Op.SUBTRACT, index+1
+        case lexer.TkForwardSlash():
+            return Bin_Op.DIVIDE, index+1
+        case lexer.TkAsterisk():
+            return Bin_Op.MULTIPLY, index+1
+        case _:
+            return None
+
+
+def parse_expr(t: list[lexer.Token],
+               index: int) -> tuple[Expression, int] | None:
+    if (index >= len(t)):
+        return None
+    result = parse_factor(t, index)
+    if result is None:
+        return None
+    left, index = result
+
+    while True:
+        op = parse_binop(t, index)
+        if op is None:
+            break
+        binop, new_index = op
+        result = parse_factor(t, new_index)
+        if result is None:
+            break
+        right, new_index = result
+        left = Binary(binop, left, right)
+        index = new_index
+    return left, index
 
 
 def parse_function(t: list[lexer.Token],

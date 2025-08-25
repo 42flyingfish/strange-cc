@@ -16,6 +16,15 @@ class Unary_Operator(Enum):
     NEGATION = auto()
 
 
+class Bin_Op(Enum):
+    """Binary Operators"""
+    ADD = auto()
+    SUBTRACT = auto()
+    MULTIPLY = auto()
+    DIVIDE = auto()
+    REMAINDER = auto()
+
+
 @dataclass
 class Constant:
     x: int
@@ -38,6 +47,14 @@ class Return:
 class Unary:
     unary_operator: Unary_Operator
     src: Val
+    dst: Val
+
+
+@dataclass
+class Binary:
+    bin_op: Bin_Op
+    src1: Val
+    src2: Val
     dst: Val
 
 
@@ -72,6 +89,22 @@ def convert_unop(node) -> Unary_Operator:
             raise RuntimeError(f'Unexpected unary operator {node}')
 
 
+def convert_binop(node) -> Bin_Op:
+    match node:
+        case parser.Bin_Op.ADD:
+            return Bin_Op.ADD
+        case parser.Bin_Op.SUBTRACT:
+            return Bin_Op.SUBTRACT
+        case parser.Bin_Op.DIVIDE:
+            return Bin_Op.DIVIDE
+        case parser.Bin_Op.MULTIPLY:
+            return Bin_Op.MULTIPLY
+        case parser.Bin_Op.REMAINDER:
+            return Bin_Op.REMAINDER
+        case _:
+            raise RuntimeError(f'Unexpected binary operator {node}')
+
+
 def emit_tacky(node, instructions: list[Instruction]) -> Val:
     match node:
         case parser.Constant(x):
@@ -81,6 +114,14 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             src = emit_tacky(operand, instructions)
             dst = Var(make_temporary())
             instructions.append(Unary(tacky_op, src, dst))
+            return dst
+        case parser.Binary(op, left, right):
+            tacky_op = convert_binop(op)
+            v1 = emit_tacky(left, instructions)
+            v2 = emit_tacky(right, instructions)
+            dst_name = make_temporary()
+            dst = Var(dst_name)
+            instructions.append(Binary(tacky_op, v1, v2, dst))
             return dst
         case _:
             raise RuntimeError(f'Uhandled Expression {node}')

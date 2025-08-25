@@ -5,7 +5,6 @@ from typing import Type
 
 import lexer
 
-
 @dataclass
 class Constant:
     val: str
@@ -86,6 +85,22 @@ def expect_tk(kind: Type,
     return False
 
 
+def precedence(operator: Bin_Op) -> int:
+    match operator:
+        case Bin_Op.MULTIPLY:
+            return 50
+        case Bin_Op.DIVIDE:
+            return 50
+        case Bin_Op.REMAINDER:
+            return 50
+        case Bin_Op.ADD:
+            return 45
+        case Bin_Op.SUBTRACT:
+            return 45
+        case _:
+            raise RuntimeError(f'Unhandled binary operator {operator}')
+
+
 def parse_constant(t: list[lexer.Token],
                    index: int) -> tuple[Constant, int] | None:
     if index >= len(t):
@@ -115,7 +130,6 @@ def parse_return(t: list[lexer.Token],
     index += 1
     ret = parse_expr(t, index)
     if ret is None:
-        raise RuntimeError(f'No expression {t[index]}')
         return None
     expr, index = ret
     if not expect_tk(lexer.TkSemicolon, t, index):
@@ -134,7 +148,7 @@ def parse_uop(t: list[lexer.Token],
         case lexer.TkMinus():
             return Unary_Operator.NEGATION, index+1
         case _:
-            None
+            return None
 
 
 def parse_factor(t: list[lexer.Token],
@@ -181,12 +195,15 @@ def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:
             return Bin_Op.DIVIDE, index+1
         case lexer.TkAsterisk():
             return Bin_Op.MULTIPLY, index+1
+        case lexer.TkPercent():
+            return Bin_Op.REMAINDER, index+1
         case _:
             return None
 
 
 def parse_expr(t: list[lexer.Token],
-               index: int) -> tuple[Expression, int] | None:
+               index: int,
+               min_prec: int = 0) -> tuple[Expression, int] | None:
     if (index >= len(t)):
         return None
     result = parse_factor(t, index)
@@ -199,7 +216,9 @@ def parse_expr(t: list[lexer.Token],
         if op is None:
             break
         binop, new_index = op
-        result = parse_factor(t, new_index)
+        if precedence(binop) < min_prec:
+            break
+        result = parse_expr(t, new_index, precedence(binop)+1)
         if result is None:
             break
         right, new_index = result

@@ -58,7 +58,7 @@ class Binary:
     dst: Val
 
 
-Instruction = Return | Unary
+Instruction = Return | Unary | Binary
 
 
 @dataclass
@@ -116,12 +116,12 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             instructions.append(Unary(tacky_op, src, dst))
             return dst
         case parser.Binary(op, left, right):
-            tacky_op = convert_binop(op)
+            bin_op = convert_binop(op)
             v1 = emit_tacky(left, instructions)
             v2 = emit_tacky(right, instructions)
             dst_name = make_temporary()
             dst = Var(dst_name)
-            instructions.append(Binary(tacky_op, v1, v2, dst))
+            instructions.append(Binary(bin_op, v1, v2, dst))
             return dst
         case _:
             raise RuntimeError(f'Uhandled Expression {node}')

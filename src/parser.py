@@ -5,6 +5,7 @@ from typing import Type
 
 import lexer
 
+
 @dataclass
 class Constant:
     val: str

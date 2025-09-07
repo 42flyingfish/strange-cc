@@ -64,7 +64,7 @@ def process_node(x) -> list[str]:
         case asm.Idiv(operand):
             return [f'\tidivl {decode_operand(operand)}\n']
         case asm.Cdq():
-            return [f'\tcdq\n']
+            return ['\tcdq\n']
         case asm.Allocate_Stack(0):
             return ['# \t No stack allocation \n']
         case asm.Allocate_Stack(offset):

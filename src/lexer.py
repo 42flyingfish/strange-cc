@@ -108,6 +108,51 @@ class TkPercent:
     pass
 
 
+@dataclass
+class TkLessThan:
+    pass
+
+
+@dataclass
+class TkGreaterThan:
+    pass
+
+
+@dataclass
+class TkLShift:
+    pass
+
+
+@dataclass
+class TkRShift:
+    pass
+
+
+@dataclass
+class TkLAnd:
+    pass
+
+
+@dataclass
+class TkBAnd:
+    pass
+
+
+@dataclass
+class TkLOr:
+    pass
+
+
+@dataclass
+class TkBOr:
+    pass
+
+
+@dataclass
+class TkXor:
+    pass
+
+
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace
@@ -127,7 +172,16 @@ Token = (TkOpenParenthesis
          | TkConstant
          | TkIdentifier
          | TkPlus
-         | TkPercent)
+         | TkPercent
+         | TkLShift
+         | TkRShift
+         | TkLAnd
+         | TkBAnd
+         | TkLOr
+         | TkBOr
+         | TkXor
+         | TkLessThan
+         | TkGreaterThan)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -162,6 +216,7 @@ def tokenize_string(line: str) -> list[Token]:
     """Takes a str and return a list of matching tokens"""
     token_list: list[Token] = []
     index = 0
+
     while index < len(line):
         match item := line[index]:
             case '(':
@@ -214,6 +269,41 @@ def tokenize_string(line: str) -> list[Token]:
             case '%':
                 token_list.append(TkPercent())
                 index += 1
+            case '<':
+                index += 1
+                # checking for <<
+                if index <= len(line) and line[index] == '<':
+                    token_list.append(TkLShift())
+                    index += 1
+                else:
+                    token_list.append(TkLessThan())
+            case '>':
+                index += 1
+                # checking for >>
+                if index <= len(line) and line[index] == '>':
+                    token_list.append(TkRShift())
+                    index += 1
+                else:
+                    token_list.append(TkGreaterThan())
+            case '&':
+                index += 1
+                # checking for &&
+                if index <= len(line) and line[index] == '&':
+                    token_list.append(TkLAnd())
+                    index += 1
+                else:
+                    token_list.append(TkBAnd())
+            case '|':
+                index += 1
+                # checking for ||
+                if index <= len(line) and line[index] == '|':
+                    token_list.append(TkLOr())
+                    index += 1
+                else:
+                    token_list.append(TkBOr())
+            case '^':
+                index += 1
+                token_list.append(TkXor())
             case c if c in whitespace:
                 # TODO Handle whitespace for strings
                 index += 1

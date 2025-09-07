@@ -16,7 +16,9 @@ class Imm():
 
 class Register_Enum(Enum):
     AX = auto()
+    CX = auto()
     DX = auto()
+    CL = auto()
     R10 = auto()
     R11 = auto()
 
@@ -59,6 +61,11 @@ class Bin_Op(Enum):
     ADD = auto()
     SUB = auto()
     MULT = auto()
+    AND = auto()
+    LEFT_SHIFT = auto()
+    RIGHT_SHIFT = auto()
+    OR = auto()
+    XOR = auto()
 
 
 @dataclass
@@ -126,6 +133,16 @@ def convert_tacky_bop(node: tacky.Bin_Op) -> Bin_Op:
             return Bin_Op.SUB
         case tacky.Bin_Op.MULTIPLY:
             return Bin_Op.MULT
+        case tacky.Bin_Op.LEFT_SHIFT:
+            return Bin_Op.LEFT_SHIFT
+        case tacky.Bin_Op.RIGHT_SHIFT:
+            return Bin_Op.RIGHT_SHIFT
+        case tacky.Bin_Op.BITW_AND:
+            return Bin_Op.AND
+        case tacky.Bin_Op.BITW_OR:
+            return Bin_Op.OR
+        case tacky.Bin_Op.XOR:
+            return Bin_Op.XOR
         case _:
             raise RuntimeError(f'Unhandled unary operator {node}')
 
@@ -171,6 +188,10 @@ def convert_tacky_function(node: tacky.Function) -> Function:
     match node:
         case tacky.Function(name, instr):
             asm_instr = [x for y in instr for x in convert_tacky_instr(y)]
+            print('Checking function conversion')
+            for x in asm_instr:
+                print(x)
+            print('End Checking function conversion')
             return Function(name, asm_instr)
         case _:
             raise RuntimeError(f'Unhandled node {node}')
@@ -258,6 +279,30 @@ def instruction_fixup(func: Function, alloc_count: int) -> None:
                 modified_instr.append(Mov(Stack(a), scratch))
                 modified_instr.append(Binary(Bin_Op.MULT, src, scratch))
                 modified_instr.append(Mov(scratch, Stack(a)))
+            case Binary(Bin_Op.AND, Stack(a), Stack(b)):
+                scratch = Register(Register_Enum.R10)
+                modified_instr.append(Mov(Stack(a), scratch))
+                modified_instr.append(Binary(Bin_Op.AND, scratch, Stack(b)))
+            case Binary(Bin_Op.OR, Stack(a), Stack(b)):
+                scratch = Register(Register_Enum.R10)
+                modified_instr.append(Mov(Stack(a), scratch))
+                modified_instr.append(Binary(Bin_Op.OR, scratch, Stack(b)))
+            case Binary(Bin_Op.XOR, Stack(a), Stack(b)):
+                scratch = Register(Register_Enum.R10)
+                modified_instr.append(Mov(Stack(a), scratch))
+                modified_instr.append(Binary(Bin_Op.XOR, scratch, Stack(b)))
+            case Binary(Bin_Op.RIGHT_SHIFT, Stack() as op1, op2):
+                scratch = Register(Register_Enum.CX)
+                cl = Register(Register_Enum.CL)
+                modified_instr.extend(
+                    (Mov(op1, scratch),
+                     Binary(Bin_Op.RIGHT_SHIFT, cl, op2)))
+            case Binary(Bin_Op.LEFT_SHIFT, Stack() as op1, op2):
+                scratch = Register(Register_Enum.CX)
+                cl = Register(Register_Enum.CL)
+                modified_instr.extend(
+                    (Mov(op1, scratch),
+                     Binary(Bin_Op.LEFT_SHIFT, cl, op2)))
             case Idiv(Imm(a)):
                 # idiv can't use an immediate as an operand
                 scratch = Register(Register_Enum.R10)

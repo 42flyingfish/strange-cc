@@ -7,8 +7,12 @@ def decode_operand(x) -> str:
             return f'${val}'
         case asm.Register(asm.Register_Enum.AX):
             return '%eax'
+        case asm.Register(asm.Register_Enum.CX):
+            return '%ecx'
         case asm.Register(asm.Register_Enum.DX):
             return '%edx'
+        case asm.Register(asm.Register_Enum.CL):
+            return '%cl'
         case asm.Register(asm.Register_Enum.R10):
             return '%r10d'
         case asm.Register(asm.Register_Enum.R11):
@@ -31,6 +35,16 @@ def decode_operator(x) -> str:
             return 'subl'
         case asm.Bin_Op.MULT:
             return 'imull'
+        case asm.Bin_Op.LEFT_SHIFT:
+            return 'sall'
+        case asm.Bin_Op.RIGHT_SHIFT:
+            return 'sarl'
+        case asm.Bin_Op.AND:
+            return 'andl'
+        case asm.Bin_Op.OR:
+            return 'orl'
+        case asm.Bin_Op.XOR:
+            return 'xorl'
         case _:
             raise RuntimeError(f'Unhandled op {x}')
 

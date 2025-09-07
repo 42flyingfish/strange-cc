@@ -28,6 +28,11 @@ class Bin_Op(Enum):
     MULTIPLY = auto()
     DIVIDE = auto()
     REMAINDER = auto()
+    LEFT_SHIFT = auto()
+    RIGHT_SHIFT = auto()
+    BIT_AND = auto()
+    BIT_OR = auto()
+    XOR = auto()
 
 
 @dataclass
@@ -98,6 +103,14 @@ def precedence(operator: Bin_Op) -> int:
             return 45
         case Bin_Op.SUBTRACT:
             return 45
+        case Bin_Op.LEFT_SHIFT | Bin_Op.RIGHT_SHIFT:
+            return 40
+        case Bin_Op.BIT_AND:
+            return 35
+        case Bin_Op.XOR:
+            return 30
+        case Bin_Op.BIT_OR:
+            return 25
         case _:
             raise RuntimeError(f'Unhandled binary operator {operator}')
 
@@ -198,6 +211,16 @@ def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:
             return Bin_Op.MULTIPLY, index+1
         case lexer.TkPercent():
             return Bin_Op.REMAINDER, index+1
+        case lexer.TkLShift():
+            return Bin_Op.LEFT_SHIFT, index+1
+        case lexer.TkRShift():
+            return Bin_Op.RIGHT_SHIFT, index+1
+        case lexer.TkBAnd():
+            return Bin_Op.BIT_AND, index+1
+        case lexer.TkBOr():
+            return Bin_Op.BIT_OR, index+1
+        case lexer.TkXor():
+            return Bin_Op.XOR, index+1
         case _:
             return None
 

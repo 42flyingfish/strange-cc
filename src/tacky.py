@@ -23,6 +23,11 @@ class Bin_Op(Enum):
     MULTIPLY = auto()
     DIVIDE = auto()
     REMAINDER = auto()
+    LEFT_SHIFT = auto()
+    RIGHT_SHIFT = auto()
+    BITW_AND = auto()
+    BITW_OR = auto()
+    XOR = auto()
 
 
 @dataclass
@@ -101,6 +106,16 @@ def convert_binop(node) -> Bin_Op:
             return Bin_Op.MULTIPLY
         case parser.Bin_Op.REMAINDER:
             return Bin_Op.REMAINDER
+        case parser.Bin_Op.LEFT_SHIFT:
+            return Bin_Op.LEFT_SHIFT
+        case parser.Bin_Op.RIGHT_SHIFT:
+            return Bin_Op.RIGHT_SHIFT
+        case parser.Bin_Op.BIT_AND:
+            return Bin_Op.BITW_AND
+        case parser.Bin_Op.BIT_OR:
+            return Bin_Op.BITW_OR
+        case parser.Bin_Op.XOR:
+            return Bin_Op.XOR
         case _:
             raise RuntimeError(f'Unexpected binary operator {node}')
 

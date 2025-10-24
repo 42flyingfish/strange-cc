@@ -154,7 +154,22 @@ class TkXor:
 
 
 @dataclass
+class TkEqual:
+    pass
+
+
+@dataclass
+class TkDEqual:
+    pass
+
+
+@dataclass
 class TkNot:
+    pass
+
+
+@dataclass
+class TkNotEqual:
     pass
 
 
@@ -187,7 +202,10 @@ Token = (TkOpenParenthesis
          | TkXor
          | TkLessThan
          | TkGreaterThan
-         | TkNot)
+         | TkEqual
+         | TkDEqual
+         | TkNot
+         | TkNotEqual)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -310,9 +328,22 @@ def tokenize_string(line: str) -> list[Token]:
             case '^':
                 index += 1
                 token_list.append(TkXor())
+            case '=':
+                index += 1
+                # checking for !=
+                if index <= len(line) and line[index] == '=':
+                    token_list.append(TkDEqual())
+                    index += 1
+                else:
+                    token_list.append(TkEqual())
             case '!':
                 index += 1
-                token_list.append(TkNot())
+                # checking for !=
+                if index <= len(line) and line[index] == '=':
+                    token_list.append(TkNotEqual())
+                    index += 1
+                else:
+                    token_list.append(TkNot())
             case c if c in whitespace:
                 # TODO Handle whitespace for strings
                 index += 1

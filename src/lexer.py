@@ -114,7 +114,17 @@ class TkLessThan:
 
 
 @dataclass
+class TkLessEqual:
+    pass
+
+
+@dataclass
 class TkGreaterThan:
+    pass
+
+
+@dataclass
+class TkGreaterEqual:
     pass
 
 
@@ -201,7 +211,9 @@ Token = (TkOpenParenthesis
          | TkBOr
          | TkXor
          | TkLessThan
+         | TkLessEqual
          | TkGreaterThan
+         | TkGreaterEqual
          | TkEqual
          | TkDEqual
          | TkNot
@@ -295,20 +307,26 @@ def tokenize_string(line: str) -> list[Token]:
                 index += 1
             case '<':
                 index += 1
-                # checking for <<
-                if index <= len(line) and line[index] == '<':
+                peek = None if index > len(line) else line[index]
+                if peek == '<':
                     token_list.append(TkLShift())
+                    index += 1
+                elif peek == '=':
+                    token_list.append(TkLessEqual())
                     index += 1
                 else:
                     token_list.append(TkLessThan())
             case '>':
                 index += 1
-                # checking for >>
-                if index <= len(line) and line[index] == '>':
+                peek = None if index > len(line) else line[index]
+                if peek == '>':
                     token_list.append(TkRShift())
                     index += 1
+                elif peek == '=':
+                    token_list.append(TkLessEqual())
+                    index += 1
                 else:
-                    token_list.append(TkGreaterThan())
+                    token_list.append(TkLessThan())
             case '&':
                 index += 1
                 # checking for &&

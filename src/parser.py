@@ -19,6 +19,7 @@ class Identifier:
 class Unary_Operator(Enum):
     NEGATION = auto()
     COMPLEMENT = auto()
+    NOT = auto()
 
 
 class Bin_Op(Enum):
@@ -33,6 +34,14 @@ class Bin_Op(Enum):
     BIT_AND = auto()
     BIT_OR = auto()
     XOR = auto()
+    LOG_AND = auto()
+    LOG_OR = auto()
+    LESS_THAN = auto()
+    LESS_EQUAL = auto()
+    GREATER_THAN = auto()
+    GREATER_EQUAL = auto()
+    EQUAL = auto()
+    NOT_EQUAL = auto()
 
 
 @dataclass
@@ -105,12 +114,22 @@ def precedence(operator: Bin_Op) -> int:
             return 45
         case Bin_Op.LEFT_SHIFT | Bin_Op.RIGHT_SHIFT:
             return 40
-        case Bin_Op.BIT_AND:
+        case Bin_Op.LESS_THAN | Bin_Op.LESS_EQUAL:
             return 35
-        case Bin_Op.XOR:
+        case Bin_Op.GREATER_THAN | Bin_Op.GREATER_EQUAL:
+            return 35
+        case Bin_Op.EQUAL | Bin_Op.NOT_EQUAL:
             return 30
-        case Bin_Op.BIT_OR:
+        case Bin_Op.BIT_AND:
             return 25
+        case Bin_Op.XOR:
+            return 20
+        case Bin_Op.BIT_OR:
+            return 15
+        case Bin_Op.LOG_AND:
+            return 10
+        case Bin_Op.LOG_OR:
+            return 5
         case _:
             raise RuntimeError(f'Unhandled binary operator {operator}')
 
@@ -161,6 +180,8 @@ def parse_uop(t: list[lexer.Token],
             return Unary_Operator.COMPLEMENT, index+1
         case lexer.TkMinus():
             return Unary_Operator.NEGATION, index+1
+        case lexer.TkNot():
+            return Unary_Operator.NOT, index+1
         case _:
             return None
 
@@ -172,7 +193,8 @@ def parse_factor(t: list[lexer.Token],
     match t[index]:
         case lexer.TkConstant():
             return parse_constant(t, index)
-        case lexer.TkMinus() | lexer.TkTilde():
+        case lexer.TkMinus() | lexer.TkTilde() | lexer.TkNot():
+            # TODO, this is needs a rework as this will need to updated
             op = parse_uop(t, index)
             if op is None:
                 return None
@@ -221,6 +243,22 @@ def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:
             return Bin_Op.BIT_OR, index+1
         case lexer.TkXor():
             return Bin_Op.XOR, index+1
+        case lexer.TkLAnd():
+            return Bin_Op.LOG_AND, index+1
+        case lexer.TkLOr():
+            return Bin_Op.LOG_OR, index+1
+        case lexer.TkDEqual():
+            return Bin_Op.EQUAL, index+1
+        case lexer.TkNotEqual():
+            return Bin_Op.NOT_EQUAL, index+1
+        case lexer.TkLessThan():
+            return Bin_Op.LESS_THAN, index+1
+        case lexer.TkLessEqual():
+            return Bin_Op.LESS_EQUAL, index+1
+        case lexer.TkGreaterThan():
+            return Bin_Op.GREATER_THAN, index+1
+        case lexer.TkGreaterEqual():
+            return Bin_Op.GREATER_EQUAL, index+1
         case _:
             return None
 

@@ -187,9 +187,33 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             instructions.append(Unary(tacky_op, src, dst))
             return dst
         case parser.Binary(parser.Bin_Op.LOG_AND, a, b):
-            raise NotImplementedError('Unhandled &&')
+            result = Var(make_temporary())
+            false_label = make_temporary()
+            end_label = make_temporary()
+            left = emit_tacky(a, instructions)
+            instructions.append(JumpIfZero(left, false_label))
+            right = emit_tacky(b, instructions)
+            instructions.extend((JumpIfZero(right, false_label),
+                                 Copy(Constant(1), result),
+                                 Jump(end_label),
+                                 Label(false_label),
+                                 Copy(Constant(0), result),
+                                 Label(end_label)))
+            return result
         case parser.Binary(parser.Bin_Op.LOG_OR, a, b):
-            raise NotImplementedError('Unhandled ||')
+            result = Var(make_temporary())
+            true_label = make_temporary()
+            end_label = make_temporary()
+            left = emit_tacky(a, instructions)
+            instructions.append(JumpIfNotZero(left, true_label))
+            right = emit_tacky(b, instructions)
+            instructions.extend((JumpIfNotZero(right, true_label),
+                                 Copy(Constant(0), result),
+                                 Jump(end_label),
+                                 Label(true_label),
+                                 Copy(Constant(1), result),
+                                 Label(end_label)))
+            return result
         case parser.Binary(op, left, right):
             bin_op = convert_binop(op)
             v1 = emit_tacky(left, instructions)

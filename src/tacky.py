@@ -7,8 +7,8 @@ from itertools import count
 counter = count()
 
 
-def make_temporary() -> str:
-    return f'tmp.{next(counter)}'
+def make_temporary(prefix='tmp') -> str:
+    return f'{prefix}{next(counter)}'
 
 
 class Unary_Operator(Enum):
@@ -187,9 +187,9 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             instructions.append(Unary(tacky_op, src, dst))
             return dst
         case parser.Binary(parser.Bin_Op.LOG_AND, a, b):
-            result = Var(make_temporary())
-            false_label = make_temporary()
-            end_label = make_temporary()
+            result = Var(make_temporary('and_result'))
+            false_label = make_temporary('and_false')
+            end_label = make_temporary('and_end')
             left = emit_tacky(a, instructions)
             instructions.append(JumpIfZero(left, false_label))
             right = emit_tacky(b, instructions)
@@ -201,9 +201,9 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
                                  Label(end_label)))
             return result
         case parser.Binary(parser.Bin_Op.LOG_OR, a, b):
-            result = Var(make_temporary())
-            true_label = make_temporary()
-            end_label = make_temporary()
+            result = Var(make_temporary('or_result'))
+            true_label = make_temporary('or_true')
+            end_label = make_temporary('or_end')
             left = emit_tacky(a, instructions)
             instructions.append(JumpIfNotZero(left, true_label))
             right = emit_tacky(b, instructions)

@@ -14,6 +14,7 @@ def make_temporary() -> str:
 class Unary_Operator(Enum):
     COMPLEMENT = auto()
     NEGATION = auto()
+    NOT = auto()
 
 
 class Bin_Op(Enum):
@@ -28,6 +29,12 @@ class Bin_Op(Enum):
     BITW_AND = auto()
     BITW_OR = auto()
     XOR = auto()
+    EQUAL = auto()
+    NOT_EQUAL = auto()
+    LESS_THAN = auto()
+    LESS_EQUAL = auto()
+    GREATER_THAN = auto()
+    GREATER_EQUAL = auto()
 
 
 @dataclass
@@ -63,7 +70,42 @@ class Binary:
     dst: Val
 
 
-Instruction = Return | Unary | Binary
+@dataclass
+class Copy:
+    src: Val
+    dst: Val
+
+
+@dataclass
+class Jump:
+    target: str
+
+
+@dataclass
+class JumpIfZero:
+    condition: Val
+    target: str
+
+
+@dataclass
+class JumpIfNotZero:
+    condition: Val
+    target: str
+
+
+@dataclass
+class Label:
+    identifier: str
+
+
+Instruction = (Return
+               | Unary
+               | Binary
+               | Copy
+               | Jump
+               | JumpIfZero
+               | JumpIfNotZero
+               | Label)
 
 
 @dataclass
@@ -90,6 +132,8 @@ def convert_unop(node) -> Unary_Operator:
             return Unary_Operator.COMPLEMENT
         case parser.Unary_Operator.NEGATION:
             return Unary_Operator.NEGATION
+        case parser.Unary_Operator.NOT:
+            return Unary_Operator.NOT
         case _:
             raise RuntimeError(f'Unexpected unary operator {node}')
 
@@ -116,6 +160,18 @@ def convert_binop(node) -> Bin_Op:
             return Bin_Op.BITW_OR
         case parser.Bin_Op.XOR:
             return Bin_Op.XOR
+        case parser.Bin_Op.EQUAL:
+            return Bin_Op.EQUAL
+        case parser.Bin_Op.NOT_EQUAL:
+            return Bin_Op.NOT_EQUAL
+        case parser.Bin_Op.LESS_THAN:
+            return Bin_Op.LESS_THAN
+        case parser.Bin_Op.LESS_EQUAL:
+            return Bin_Op.LESS_EQUAL
+        case parser.Bin_Op.GREATER_THAN:
+            return Bin_Op.GREATER_THAN
+        case parser.Bin_Op.GREATER_EQUAL:
+            return Bin_Op.GREATER_EQUAL
         case _:
             raise RuntimeError(f'Unexpected binary operator {node}')
 
@@ -130,6 +186,10 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             dst = Var(make_temporary())
             instructions.append(Unary(tacky_op, src, dst))
             return dst
+        case parser.Binary(parser.Bin_Op.LOG_AND, a, b):
+            raise NotImplementedError('Unhandled &&')
+        case parser.Binary(parser.Bin_Op.LOG_OR, a, b):
+            raise NotImplementedError('Unhandled ||')
         case parser.Binary(op, left, right):
             bin_op = convert_binop(op)
             v1 = emit_tacky(left, instructions)

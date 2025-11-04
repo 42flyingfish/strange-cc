@@ -218,17 +218,17 @@ def convert_tacky_instr(node: tacky.Instruction) -> tuple[Instruction, ...]:
         case tacky.Return(val):
             src = convert_tacky_val(val)
             return (Mov(src, Register(Register_Enum.AX)), Ret())
-        case tacky.Unary(tacky.Unary_Operator.NOT, src, dst):
+        case tacky.Unary(operator, src, dst):
             asm_src = convert_tacky_val(src)
             asm_dst = convert_tacky_val(dst)
-            return (Cmp(Imm(0), asm_src),
-                    Mov(Imm(0), asm_dst),
-                    SetCC(Cond_Code.E, asm_dst))
-        case tacky.Unary(unary_operator, src, dst):
-            asm_src = convert_tacky_val(src)
-            asm_dst = convert_tacky_val(dst)
-            asm_op = convert_tacky_uop(unary_operator)
-            return (Mov(asm_src, asm_dst), Unary(asm_op, asm_dst))
+            match operator:
+                case tacky.Unary_Operator.NOT:
+                    return (Cmp(Imm(0), asm_src),
+                            Mov(Imm(0), asm_dst),
+                            SetCC(Cond_Code.E, asm_dst))
+                case _:
+                    asm_op = convert_tacky_uop(operator)
+                    return (Mov(asm_src, asm_dst), Unary(asm_op, asm_dst))
         case tacky.Binary(operator, src1, src2, dst):
             asm_src1 = convert_tacky_val(src1)
             asm_src2 = convert_tacky_val(src2)

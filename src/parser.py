@@ -194,7 +194,7 @@ def parse_factor(t: list[lexer.Token],
         case lexer.TkConstant():
             return parse_constant(t, index)
         case lexer.TkMinus() | lexer.TkTilde() | lexer.TkNot():
-            # TODO, this is needs a rework as this will need to updated
+            # TODO, this is needs a rework as more operators will come
             op = parse_uop(t, index)
             if op is None:
                 return None

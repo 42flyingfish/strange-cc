@@ -82,6 +82,12 @@ class Binary:
 
 
 @dataclass
+class Cmp:
+    left: Operand
+    right: Operand
+
+
+@dataclass
 class Idiv:
     operand: Operand
 
@@ -91,7 +97,49 @@ class Cdq:
     pass
 
 
-Instruction = Mov | Allocate_Stack | Unary | Ret | Binary | Cdq | Idiv
+@dataclass
+class Jmp:
+    identifier: str
+
+
+class Cond_Code(Enum):
+    E = auto()
+    NE = auto()
+    G = auto()
+    GE = auto()
+    L = auto()
+    LE = auto()
+
+
+@dataclass
+class JmpCC:
+    cond_code: Cond_Code
+    identifier: str
+
+
+@dataclass
+class SetCC:
+    cond_code: Cond_Code
+    operand: Operand
+
+
+@dataclass
+class Label:
+    identifier: str
+
+
+Instruction = (Mov
+               | Allocate_Stack
+               | Unary
+               | Ret
+               | Binary
+               | Cmp
+               | Cdq
+               | Idiv
+               | Jmp
+               | JmpCC
+               | SetCC
+               | Label)
 
 
 @dataclass
@@ -147,39 +195,85 @@ def convert_tacky_bop(node: tacky.Bin_Op) -> Bin_Op:
             raise RuntimeError(f'Unhandled unary operator {node}')
 
 
+def convert_tacky_relational(node: tacky.Bin_Op) -> Cond_Code:
+    match node:
+        case tacky.Bin_Op.EQUAL:
+            return Cond_Code.E
+        case tacky.Bin_Op.NOT_EQUAL:
+            return Cond_Code.NE
+        case tacky.Bin_Op.GREATER_THAN:
+            return Cond_Code.G
+        case tacky.Bin_Op.GREATER_EQUAL:
+            return Cond_Code.GE
+        case tacky.Bin_Op.LESS_THAN:
+            return Cond_Code.L
+        case tacky.Bin_Op.LESS_EQUAL:
+            return Cond_Code.LE
+        case _:
+            raise RuntimeError(f'Unhandled relational operator {node}')
+
+
 def convert_tacky_instr(node: tacky.Instruction) -> tuple[Instruction, ...]:
     match node:
         case tacky.Return(val):
             src = convert_tacky_val(val)
             return (Mov(src, Register(Register_Enum.AX)), Ret())
+        case tacky.Unary(tacky.Unary_Operator.NOT, src, dst):
+            asm_src = convert_tacky_val(src)
+            asm_dst = convert_tacky_val(dst)
+            return (Cmp(Imm(0), asm_src),
+                    Mov(Imm(0), asm_dst),
+                    SetCC(Cond_Code.E, asm_dst))
         case tacky.Unary(unary_operator, src, dst):
             asm_src = convert_tacky_val(src)
             asm_dst = convert_tacky_val(dst)
             asm_op = convert_tacky_uop(unary_operator)
             return (Mov(asm_src, asm_dst), Unary(asm_op, asm_dst))
-        case tacky.Binary(tacky.Bin_Op.DIVIDE, src1, src2, dst):
-            asm_src1 = convert_tacky_val(src1)
-            asm_src2 = convert_tacky_val(src2)
-            asm_dst = convert_tacky_val(dst)
-            return (Mov(asm_src1, Register(Register_Enum.AX)),
-                    Cdq(),
-                    Idiv(asm_src2),
-                    Mov(Register(Register_Enum.AX), asm_dst))
-        case tacky.Binary(tacky.Bin_Op.REMAINDER, src1, src2, dst):
-            asm_src1 = convert_tacky_val(src1)
-            asm_src2 = convert_tacky_val(src2)
-            asm_dst = convert_tacky_val(dst)
-            return (Mov(asm_src1, Register(Register_Enum.AX)),
-                    Cdq(),
-                    Idiv(asm_src2),
-                    Mov(Register(Register_Enum.DX), asm_dst))
         case tacky.Binary(operator, src1, src2, dst):
-            asm_bop = convert_tacky_bop(operator)
             asm_src1 = convert_tacky_val(src1)
             asm_src2 = convert_tacky_val(src2)
             asm_dst = convert_tacky_val(dst)
-            return (Mov(asm_src1, asm_dst),
-                    Binary(asm_bop, asm_src2, asm_dst))
+            match operator:
+                case tacky.Bin_Op.DIVIDE:
+                    return (Mov(asm_src1, Register(Register_Enum.AX)),
+                            Cdq(),
+                            Idiv(asm_src2),
+                            Mov(Register(Register_Enum.AX), asm_dst))
+                case tacky.Bin_Op.REMAINDER:
+                    return (Mov(asm_src1, Register(Register_Enum.AX)),
+                            Cdq(),
+                            Idiv(asm_src2),
+                            Mov(Register(Register_Enum.DX), asm_dst))
+                case (tacky.Bin_Op.GREATER_THAN
+                      | tacky.Bin_Op.GREATER_EQUAL
+                      | tacky.Bin_Op.LESS_THAN
+                      | tacky.Bin_Op.LESS_EQUAL
+                      | tacky.Bin_Op.EQUAL
+                      | tacky.Bin_Op.NOT_EQUAL):
+                    asm_cc = convert_tacky_relational(operator)
+                    return (Cmp(asm_src2, asm_src1),
+                            Mov(Imm(0), asm_dst),
+                            SetCC(asm_cc, asm_dst))
+                case _:
+                    asm_bop = convert_tacky_bop(operator)
+                    return (Mov(asm_src1, asm_dst),
+                            Binary(asm_bop, asm_src2, asm_dst))
+        case tacky.Jump(target):
+            return (Jmp(target),)
+        case tacky.JumpIfZero(condtion, target):
+            asm_condition = convert_tacky_val(condtion)
+            return ((Cmp(Imm(0), asm_condition)),
+                    JmpCC(Cond_Code.E, target))
+        case tacky.JumpIfNotZero(condition, target):
+            asm_condition = convert_tacky_val(condition)
+            return ((Cmp(Imm(0), asm_condition)),
+                    JmpCC(Cond_Code.NE, target))
+        case tacky.Copy(src, dst):
+            asm_src = convert_tacky_val(src)
+            asm_dst = convert_tacky_val(dst)
+            return (Mov(asm_src, asm_dst),)
+        case tacky.Label(identifier):
+            return (Label(identifier),)
         case _:
             raise RuntimeError(f'Unhandled Instruction {node}')
 

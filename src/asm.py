@@ -341,6 +341,10 @@ def replace_psuedo(func: Function) -> int:
             case Idiv(operand):
                 new_operand = replace_operand(operand)
                 modified_instr.append(Idiv(new_operand))
+            case Cmp(left, right):
+                new_left = replace_operand(left)
+                new_right = replace_operand(right)
+                modified_instr.append(Cmp(new_left, new_right))
             case _:
                 modified_instr.append(instr)
 
@@ -397,6 +401,14 @@ def instruction_fixup(func: Function, alloc_count: int) -> None:
                 modified_instr.extend(
                     (Mov(op1, scratch),
                      Binary(Bin_Op.LEFT_SHIFT, cl, op2)))
+            case Cmp(Stack() as left, Stack() as right):
+                scratch = Register(Register_Enum.R10)
+                modified_instr.extend((Mov(left, scratch),
+                                       Cmp(scratch, right)))
+            case Cmp(left, Imm() as right):
+                scratch = Register(Register_Enum.R11)
+                modified_instr.extend((Mov(right, scratch),
+                                       Cmp(left, scratch)))
             case Idiv(Imm(a)):
                 # idiv can't use an immediate as an operand
                 scratch = Register(Register_Enum.R10)

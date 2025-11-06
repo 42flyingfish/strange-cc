@@ -1,5 +1,6 @@
-import asm
 from collections.abc import Generator
+
+import asm
 
 
 def decode_operand(x) -> str:

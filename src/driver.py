@@ -58,13 +58,14 @@ def handle_args():
     asm_ast = asm.emit_asm_ast(tacky_ast)
     if args.codegen:
         return
-    blah = code_emit.process_node(asm_ast)
+    blah = [x for x in code_emit.process_node(asm_ast)]
     asm_file_output = f'{file_basename}.s'
     asm_file_output = os.path.join(directory, f'{file_basename}.s')
     bin_file_output = os.path.join(directory, file_basename)
 
     with open(asm_file_output, 'w') as output:
-        output.writelines(blah)
+        for x in blah:
+            output.write(x)
 
     gcc_command = ['gcc', '-o', bin_file_output, asm_file_output]
 

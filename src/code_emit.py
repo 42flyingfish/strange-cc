@@ -1,4 +1,5 @@
 import asm
+from collections.abc import Generator
 
 
 def decode_operand(x) -> str:
@@ -49,39 +50,37 @@ def decode_operator(x) -> str:
             raise RuntimeError(f'Unhandled op {x}')
 
 
-def process_node(x) -> list[str]:
+def process_node(x) -> Generator[str]:
     match x:
         case asm.Program():
-            result = process_node(x.function_definition)
-            result.append('.section .note.GNU-stack,"",@progbits\n')
-            return result
+            yield from process_node(x.function_definition)
+            yield '.section .note.GNU-stack,"",@progbits\n'
         case asm.Function(name, instructions):
-            result = [f'\t.global {name}\n',
-                      f'{name}:\n',
-                      '\tpushq %rbp\n',
-                      '\tmovq %rsp, %rbp\n']
+            yield f'\t.global {name}\n'
+            yield f'{name}:\n'
+            yield '\tpushq %rbp\n'
+            yield '\tmovq %rsp, %rbp\n'
             for instruction in instructions:
-                result.extend(process_node(instruction))
-            return result
+                yield from process_node(instruction)
         case asm.Mov(src, dst):
-            return [f'\tmovl {decode_operand(src)}, {decode_operand(dst)}\n']
+            yield f'\tmovl {decode_operand(src)}, {decode_operand(dst)}\n'
         case asm.Ret():
-            return ['\tmovq %rbp, %rsp\n',
-                    '\tpopq %rbp\n',
-                    '\tret\n']
+            yield '\tmovq %rbp, %rsp\n'
+            yield '\tpopq %rbp\n'
+            yield '\tret\n'
         case asm.Unary(operator, dst):
-            return [f'\t{decode_operator(operator)} {decode_operand(dst)}\n']
+            yield f'\t{decode_operator(operator)} {decode_operand(dst)}\n'
         case asm.Binary(operator, left, right):
             op1 = decode_operand(left)
             op2 = decode_operand(right)
-            return [f'\t{decode_operator(operator)} {op1}, {op2}\n']
+            yield f'\t{decode_operator(operator)} {op1}, {op2}\n'
         case asm.Idiv(operand):
-            return [f'\tidivl {decode_operand(operand)}\n']
+            yield f'\tidivl {decode_operand(operand)}\n'
         case asm.Cdq():
-            return ['\tcdq\n']
+            yield '\tcdq\n'
         case asm.Allocate_Stack(0):
-            return ['# \t No stack allocation \n']
+            yield '# \t No stack allocation \n'
         case asm.Allocate_Stack(offset):
-            return [f'\tsubq ${offset}, %rsp\n']
+            yield f'\tsubq ${offset}, %rsp\n'
         case _:
             raise RuntimeError(f'Unandled instruction {x}')

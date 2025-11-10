@@ -123,22 +123,51 @@ def process_node(x) -> Generator[str]:
             yield '\tmovq %rsp, %rbp\n'
             for instruction in instructions:
                 yield from process_node(instruction)
-        case asm.Mov(src, dst):
-            yield f'\tmovl {decode_operand(src)}, {decode_operand(dst)}\n'
+        case asm.Mov(size, src, dst):
+            s = decode_suffix(size)
+            a = decode_operand(src, size)
+            b = decode_operand(dst, size)
+            yield f'\tmov{s} {a}, {b}\n'
         case asm.Ret():
             yield '\tmovq %rbp, %rsp\n'
             yield '\tpopq %rbp\n'
             yield '\tret\n'
-        case asm.Unary(operator, dst):
-            yield f'\t{decode_operator(operator)} {decode_operand(dst)}\n'
-        case asm.Binary(operator, left, right):
-            op1 = decode_operand(left)
-            op2 = decode_operand(right)
-            yield f'\t{decode_operator(operator)} {op1}, {op2}\n'
-        case asm.Idiv(operand):
-            yield f'\tidivl {decode_operand(operand)}\n'
+        case asm.Unary(operator, s, dst):
+            yield f'\t{decode_operator(operator)} {decode_operand(dst, s)}\n'
+        case asm.Binary(asm.Bin_Op.LEFT_SHIFT | asm.Bin_Op.RIGHT_SHIFT as op,
+                        size,
+                        asm.Register(asm.Register_Enum.CX),
+                        operand):
+            s = decode_suffix(size)
+            a = decode_operator(op)
+            b = decode_operand(operand, size)
+            yield f'\t{a}{s} %cl, {b}\n'
+        case asm.Binary(operator, size, left, right):
+            op1 = decode_operand(left, size)
+            op2 = decode_operand(right, size)
+            s = decode_suffix(size)
+            yield f'\t{decode_operator(operator)}{s} {op1}, {op2}\n'
+        case asm.Idiv(size, operand):
+            suffix = decode_suffix(size)
+            yield f'\tidiv{suffix} {decode_operand(operand, size)}\n'
         case asm.Cdq():
             yield '\tcdq\n'
+        case asm.Cmp(size, left, right):
+            suffix = decode_suffix(size)
+            op1 = decode_operand(left, size)
+            op2 = decode_operand(right, size)
+            yield f'\tcmp{suffix} {op1}, {op2}\n'
+        case asm.Jmp(label):
+            yield f'\tjmp .L{label}\n'
+        case asm.JmpCC(cond_code, label):
+            jcc = f'j{decode_cond_code(cond_code)}'
+            yield f'\t{jcc} .L{label}\n'
+        case asm.SetCC(cond_code, operand):
+            setcc = f'set{decode_cond_code(cond_code)}'
+            op1 = decode_operand(operand, asm.Size.B)
+            yield f'\t{setcc} {op1}\n'
+        case asm.Label(label):
+            yield f'.L{label}:\n'
         case asm.Allocate_Stack(0):
             yield '# \t No stack allocation \n'
         case asm.Allocate_Stack(offset):

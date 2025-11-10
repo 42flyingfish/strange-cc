@@ -358,6 +358,9 @@ def replace_psuedo(func: Function) -> int:
                 new_left = replace_operand(left)
                 new_right = replace_operand(right)
                 modified_instr.append(Cmp(size, new_left, new_right))
+            case SetCC(cond_code, operand):
+                new_operand = replace_operand(operand)
+                modified_instr.append(SetCC(cond_code, new_operand))
             case _:
                 modified_instr.append(instr)
 

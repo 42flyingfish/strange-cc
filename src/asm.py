@@ -294,10 +294,6 @@ def convert_tacky_function(node: tacky.Function) -> Function:
     match node:
         case tacky.Function(name, instr):
             asm_instr = [x for y in instr for x in convert_tacky_instr(y)]
-            print('Checking function conversion')
-            for x in asm_instr:
-                print(x)
-            print('End Checking function conversion')
             return Function(name, asm_instr)
         case _:
             raise RuntimeError(f'Unhandled node {node}')
@@ -337,7 +333,6 @@ def replace_psuedo(func: Function) -> int:
     modified_instr: list[Instruction] = []
 
     for instr in func.instructions:
-        print(instr)
         match instr:
             case Mov(size, src, dst):
                 new_src = replace_operand(src)

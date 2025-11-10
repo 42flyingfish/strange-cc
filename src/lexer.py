@@ -323,10 +323,10 @@ def tokenize_string(line: str) -> list[Token]:
                     token_list.append(TkRShift())
                     index += 1
                 elif peek == '=':
-                    token_list.append(TkLessEqual())
+                    token_list.append(TkGreaterEqual())
                     index += 1
                 else:
-                    token_list.append(TkLessThan())
+                    token_list.append(TkGreaterThan())
             case '&':
                 index += 1
                 # checking for &&

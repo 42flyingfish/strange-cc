@@ -233,7 +233,7 @@ def parse_identity_keyword(x: str) -> tuple[Token, int]:
     if (x == ''):
         raise ValueError('Tried to parse empty string as identity')
     head = x[0]
-    LEGAL_CHAR = digits + ascii_letters
+    LEGAL_CHAR = digits + ascii_letters + '_'
     tail = ''.join(c for c in takewhile(lambda ch: ch in LEGAL_CHAR, x[1:]))
     token_string = head + tail
     token_len = len(token_string)
@@ -250,6 +250,7 @@ def parse_identity_keyword(x: str) -> tuple[Token, int]:
 
 def tokenize_string(line: str) -> list[Token]:
     """Takes a str and return a list of matching tokens"""
+    CHRS = ascii_letters + '_'
     token_list: list[Token] = []
     index = 0
 
@@ -371,7 +372,7 @@ def tokenize_string(line: str) -> list[Token]:
                 thing = parse_constant(line[index:])
                 token_list.append(thing)
                 index += len(thing.val)
-            case c if c in ascii_letters:
+            case c if c in CHRS:
                 ret, ret_len = parse_identity_keyword(line[index:])
                 token_list.append(ret)
                 index += ret_len

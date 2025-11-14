@@ -1,18 +1,13 @@
-
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Type
 
 import lexer
+from utility import Identifier
 
 
 @dataclass
 class Constant:
-    val: str
-
-
-@dataclass
-class Identifier:
     val: str
 
 

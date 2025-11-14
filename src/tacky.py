@@ -3,12 +3,14 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from itertools import count
 
+from utility import Identifier
+
 # Nasty Global for use below
 counter = count()
 
 
-def make_temporary(prefix='tmp') -> str:
-    return f'{prefix}{next(counter)}'
+def make_temporary(prefix='tmp') -> Identifier:
+    return Identifier(f'{prefix}{next(counter)}')
 
 
 class Unary_Operator(Enum):
@@ -44,7 +46,7 @@ class Constant:
 
 @dataclass
 class Var:
-    identifier: str
+    identifier: Identifier
 
 
 Val = Constant | Var
@@ -78,24 +80,24 @@ class Copy:
 
 @dataclass
 class Jump:
-    target: str
+    target: Identifier
 
 
 @dataclass
 class JumpIfZero:
     condition: Val
-    target: str
+    target: Identifier
 
 
 @dataclass
 class JumpIfNotZero:
     condition: Val
-    target: str
+    target: Identifier
 
 
 @dataclass
 class Label:
-    identifier: str
+    identifier: Identifier
 
 
 Instruction = (Return
@@ -110,7 +112,7 @@ Instruction = (Return
 
 @dataclass
 class Function:
-    identifier: str
+    identifier: Identifier
     body: list[Instruction]
 
 
@@ -240,7 +242,7 @@ def emit_tacky_function(node: parser.Function) -> Function:
         case parser.Function(name, body):
             arr: list[Instruction] = []
             emit_tacky_return(body, arr)
-            return Function(name.val, arr)
+            return Function(name, arr)
         case _:
             raise RuntimeError(f'Non function node passed {node}')
 

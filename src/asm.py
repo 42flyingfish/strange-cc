@@ -2,11 +2,12 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 import tacky
+from utility import Identifier
 
 
 @dataclass(frozen=True)
 class Pseudo():
-    identifier: str
+    identifier: Identifier
 
 
 @dataclass
@@ -110,7 +111,7 @@ class Cdq:
 
 @dataclass
 class Jmp:
-    identifier: str
+    identifier: Identifier
 
 
 class Cond_Code(Enum):
@@ -125,7 +126,7 @@ class Cond_Code(Enum):
 @dataclass
 class JmpCC:
     cond_code: Cond_Code
-    identifier: str
+    identifier: Identifier
 
 
 @dataclass
@@ -136,7 +137,7 @@ class SetCC:
 
 @dataclass
 class Label:
-    identifier: str
+    identifier: Identifier
 
 
 Instruction = (Mov

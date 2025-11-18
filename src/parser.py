@@ -11,6 +11,11 @@ class Constant:
     val: str
 
 
+@dataclass
+class Var:
+    identifier: Identifier
+
+
 class Unary_Operator(Enum):
     NEGATION = auto()
     COMPLEMENT = auto()
@@ -37,6 +42,7 @@ class Bin_Op(Enum):
     GREATER_EQUAL = auto()
     EQUAL = auto()
     NOT_EQUAL = auto()
+    ASSIGN = auto()
 
 
 @dataclass
@@ -52,7 +58,13 @@ class Binary:
     right: 'Expression'
 
 
-Expression = Unary | Constant | Binary
+@dataclass
+class Assignment:
+    left: 'Expression'
+    right: 'Expression'
+
+
+Expression = Constant | Var | Unary | Binary | Assignment
 
 
 @dataclass
@@ -60,13 +72,45 @@ class Return:
     exp: Expression
 
 
-type Statement = Return
+@dataclass
+class ExpNode:
+    exp: Expression
+
+
+@dataclass
+class Null:
+    pass
+
+
+Statement = Return | ExpNode | Null
+
+
+@dataclass
+class DeclareNode:
+    name: Identifier
+    exp: Expression | None = None
+
+
+type Declaration = DeclareNode
+
+
+@dataclass
+class S:
+    statement: Statement
+
+
+@dataclass
+class D:
+    declaration: Declaration
+
+
+Block_Item = S | D
 
 
 @dataclass
 class Function:
     name: Identifier
-    body: Statement
+    body: list[Block_Item]
 
 
 @dataclass
@@ -125,6 +169,8 @@ def precedence(operator: Bin_Op) -> int:
             return 10
         case Bin_Op.LOG_OR:
             return 5
+        case Bin_Op.ASSIGN:
+            return 1
         case _:
             raise RuntimeError(f'Unhandled binary operator {operator}')
 
@@ -138,6 +184,17 @@ def parse_constant(t: list[lexer.Token],
             return Constant(val), index+1
         case _:
             return None
+
+
+def parse_var(t: list[lexer.Token],
+              index: int) -> tuple[Var, int] | None:
+    if index >= len(t):
+        return None
+    result = parse_identifier(t, index)
+    if result is None:
+        return None
+    id, index = result
+    return Var(id), index
 
 
 def parse_identifier(t: list[lexer.Token],
@@ -166,6 +223,18 @@ def parse_return(t: list[lexer.Token],
     return (Return(expr), index)
 
 
+def parse_exprNode(t: list[lexer.Token],
+                   index: int) -> tuple[ExpNode, int] | None:
+    ret = parse_expr(t, index)
+    if ret is None:
+        return None
+    expr, index = ret
+    if not expect_tk(lexer.TkSemicolon, t, index):
+        return None
+    index += 1
+    return (ExpNode(expr), index)
+
+
 def parse_uop(t: list[lexer.Token],
               index: int) -> tuple[Unary_Operator, int] | None:
     if index >= len(t):
@@ -179,6 +248,57 @@ def parse_uop(t: list[lexer.Token],
             return Unary_Operator.NOT, index+1
         case _:
             return None
+
+
+def parse_statement(t: list[lexer.Token],
+                    index: int) -> tuple[Statement, int] | None:
+    if (index >= len(t)):
+        return None
+    match t[index]:
+        case lexer.TkSemicolon():
+            return Null(), index+1
+        case lexer.TkReturn():
+            return parse_return(t, index)
+        case _:
+            return parse_exprNode(t, index)
+
+
+def parse_declaration(t: list[lexer.Token],
+                      index: int) -> tuple[Declaration, int] | None:
+    if not expect_tk(lexer.TkInt, t, index):
+        return None
+    index += 1
+    id_result = parse_identifier(t, index)
+    if id_result is None:
+        return None
+    id, index = id_result
+    match t[index]:
+        case lexer.TkSemicolon():
+            return DeclareNode(id), index+1
+        case lexer.TkEqual():
+            index += 1
+            exp_result = parse_expr(t, index)
+            if exp_result is None:
+                return None
+            exp, index = exp_result
+            if not expect_tk(lexer.TkSemicolon, t, index):
+                return None
+            return DeclareNode(id, exp), index+1
+        case _:
+            return None
+
+
+def parse_block_item(t: list[lexer.Token],
+                     index: int) -> tuple[Block_Item, int] | None:
+    s_result = parse_statement(t, index)
+    if s_result is not None:
+        s, index = s_result
+        return S(s), index
+    d_result = parse_declaration(t, index)
+    if d_result is None:
+        return None
+    d, index = d_result
+    return D(d), index
 
 
 def parse_factor(t: list[lexer.Token],
@@ -210,8 +330,11 @@ def parse_factor(t: list[lexer.Token],
             index += 1
             return (inner_expr, index)
         case _:
-            print(f'Default {t[index]}')
-            return None
+            id_result = parse_identifier(t, index)
+            if id_result is None:
+                return None
+            id, index = id_result
+            return Var(id), index
 
 
 def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:
@@ -242,6 +365,8 @@ def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:
             return Bin_Op.LOG_AND, index+1
         case lexer.TkLOr():
             return Bin_Op.LOG_OR, index+1
+        case lexer.TkEqual():
+            return Bin_Op.ASSIGN, index+1
         case lexer.TkDEqual():
             return Bin_Op.EQUAL, index+1
         case lexer.TkNotEqual():
@@ -275,11 +400,18 @@ def parse_expr(t: list[lexer.Token],
         binop, new_index = op
         if precedence(binop) < min_prec:
             break
-        result = parse_expr(t, new_index, precedence(binop)+1)
-        if result is None:
-            break
-        right, new_index = result
-        left = Binary(binop, left, right)
+        if binop == Bin_Op.ASSIGN:
+            right_result = parse_expr(t, new_index, precedence(binop))
+            if right_result is None:
+                return None
+            right, new_index = right_result
+            left = Assignment(left, right)
+        else:
+            result = parse_expr(t, new_index, precedence(binop)+1)
+            if result is None:
+                break
+            right, new_index = result
+            left = Binary(binop, left, right)
         index = new_index
     return left, index
 
@@ -305,14 +437,14 @@ def parse_function(t: list[lexer.Token],
         else:
             index += 1
 
-    r_statement = parse_return(t, index)
-    if (r_statement is None):
-        return None
-    index = r_statement[1]
+    body: list[Block_Item] = list()
+    while (b_result := parse_block_item(t, index)) is not None:
+        item, index = b_result
+        body.append(item)
     if not expect_tk(lexer.TkCloseBrace, t, index):
         return None
     index += 1
-    return (Function(r_ident[0], r_statement[0]), index)
+    return (Function(r_ident[0], body), index)
 
 
 def parse_program(t: list[lexer.Token],

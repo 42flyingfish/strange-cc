@@ -8,6 +8,7 @@ import asm
 import code_emit
 import lexer
 import tacky
+import semantic
 
 
 def handle_args():
@@ -18,6 +19,7 @@ def handle_args():
     group.add_argument('--parse', action='store_true')
     group.add_argument('--codegen', action='store_true')
     group.add_argument('--tacky', action='store_true')
+    group.add_argument('--validate', action='store_true')
 
     parser.add_argument('filepath', type=str)
 
@@ -51,7 +53,10 @@ def handle_args():
     if args.parse:
         return
     # TODO make use of the TACKY Immediate Representation
-    tacky_ast = tacky.emit_tack_program(x)
+    resolved = semantic.resolve_program(x)
+    if args.validate:
+        return
+    tacky_ast = tacky.emit_tack_program(resolved)
     if args.tacky:
         return
 

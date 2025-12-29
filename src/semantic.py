@@ -35,7 +35,7 @@ def resolve_declaration(d: parser.Declaration,
         raise RuntimeError(f'Duplicate variable detected: {d.name}')
     unique_name = make_temporary(str(d.name))
     v.register(d.name, unique_name)
-    return d
+    return parser.DeclareNode(unique_name, d.exp)
 
 
 def resolve_func(f: parser.Function,

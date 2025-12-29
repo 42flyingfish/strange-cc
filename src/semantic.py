@@ -35,7 +35,10 @@ def resolve_declaration(d: parser.Declaration,
         raise RuntimeError(f'Duplicate variable detected: {d.name}')
     unique_name = make_temporary(str(d.name))
     v.register(d.name, unique_name)
-    return parser.DeclareNode(unique_name, d.exp)
+    if d.exp is None:
+        return parser.DeclareNode(unique_name, None)
+    new_exp = resolve_exp(d.exp, v)
+    return parser.DeclareNode(unique_name, new_exp)
 
 
 def resolve_func(f: parser.Function,
@@ -90,12 +93,15 @@ def resolve_exp(e: parser.Expression,
                 raise RuntimeError(f'Id {id} is not in scope')
             return parser.Var(unique_id)
         case parser.Unary(up, exp):
+            print('Hits this')
+            print(exp)
             new_exp = resolve_exp(exp, v)
+            print(new_exp)
             return parser.Unary(up, new_exp)
         case parser.Binary(bop, left, right):
             new_left = resolve_exp(left, v)
             new_right = resolve_exp(right, v)
-            return parser.Binary(bop, left, right)
+            return parser.Binary(bop, new_left, new_right)
         case _:
             raise RuntimeError(f'Impossible {e}')
 

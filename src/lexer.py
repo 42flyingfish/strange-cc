@@ -233,7 +233,6 @@ class TkRSEqual:
     pass
 
 
-
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace

@@ -43,6 +43,16 @@ class Bin_Op(Enum):
     EQUAL = auto()
     NOT_EQUAL = auto()
     ASSIGN = auto()
+    ADD_ASSIGN = auto()
+    SUB_ASSIGN = auto()
+    MUL_ASSIGN = auto()
+    DIV_ASSIGN = auto()
+    MOD_ASSIGN = auto()
+    BAND_ASSIGN = auto()
+    BOR_ASSIGN = auto()
+    XOR_ASSIGN = auto()
+    LS_ASSIGN = auto()
+    RS_ASSIGN = auto()
 
 
 @dataclass
@@ -64,7 +74,14 @@ class Assignment:
     right: 'Expression'
 
 
-Expression = Constant | Var | Unary | Binary | Assignment
+@dataclass
+class CompoundAssign:
+    binary_operator: Bin_Op
+    left: 'Expression'
+    right: 'Expression'
+
+
+Expression = Constant | Var | Unary | Binary | Assignment | CompoundAssign
 
 
 @dataclass
@@ -170,6 +187,17 @@ def precedence(operator: Bin_Op) -> int:
         case Bin_Op.LOG_OR:
             return 5
         case Bin_Op.ASSIGN:
+            return 1
+        case (Bin_Op.ADD_ASSIGN
+              | Bin_Op.SUB_ASSIGN
+              | Bin_Op.MUL_ASSIGN
+              | Bin_Op.DIV_ASSIGN
+              | Bin_Op.MOD_ASSIGN
+              | Bin_Op.BAND_ASSIGN
+              | Bin_Op.BOR_ASSIGN
+              | Bin_Op.XOR_ASSIGN
+              | Bin_Op.LS_ASSIGN
+              | Bin_Op.RS_ASSIGN):
             return 1
         case _:
             raise RuntimeError(f'Unhandled binary operator {operator}')
@@ -379,6 +407,26 @@ def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:
             return Bin_Op.GREATER_THAN, index+1
         case lexer.TkGreaterEqual():
             return Bin_Op.GREATER_EQUAL, index+1
+        case lexer.TkPlusEqual():
+            return Bin_Op.ADD_ASSIGN, index+1
+        case lexer.TkSubEqual():
+            return Bin_Op.SUB_ASSIGN, index+1
+        case lexer.TkMulEqual():
+            return Bin_Op.MUL_ASSIGN, index+1
+        case lexer.TkDivEqual():
+            return Bin_Op.DIV_ASSIGN, index+1
+        case lexer.TkModEqual():
+            return Bin_Op.MOD_ASSIGN, index+1
+        case lexer.TkBAndEqual():
+            return Bin_Op.BAND_ASSIGN, index+1
+        case lexer.TkBOrEqual():
+            return Bin_Op.BOR_ASSIGN, index+1
+        case lexer.TkXorEqual():
+            return Bin_Op.XOR_ASSIGN, index+1
+        case lexer.TkLSEqual():
+            return Bin_Op.LS_ASSIGN, index+1
+        case lexer.TkRSEqual():
+            return Bin_Op.RS_ASSIGN, index+1
         case _:
             return None
 
@@ -406,6 +454,16 @@ def parse_expr(t: list[lexer.Token],
                 return None
             right, new_index = right_result
             left = Assignment(left, right)
+        elif binop in {Bin_Op.ADD_ASSIGN, Bin_Op.SUB_ASSIGN,
+                       Bin_Op.MUL_ASSIGN, Bin_Op.DIV_ASSIGN,
+                       Bin_Op.MOD_ASSIGN, Bin_Op.BAND_ASSIGN,
+                       Bin_Op.BOR_ASSIGN, Bin_Op.XOR_ASSIGN,
+                       Bin_Op.LS_ASSIGN, Bin_Op.RS_ASSIGN}:
+            right_result = parse_expr(t, new_index, precedence(binop))
+            if right_result is None:
+                return None
+            right, new_index = right_result
+            left = CompoundAssign(binop, left, right)
         else:
             result = parse_expr(t, new_index, precedence(binop)+1)
             if result is None:

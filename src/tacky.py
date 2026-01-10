@@ -224,24 +224,59 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             dst = Var(dst_name)
             instructions.append(Binary(bin_op, v1, v2, dst))
             return dst
-        case _:
-            raise RuntimeError(f'Uhandled Expression {node}')
-
-
-def emit_tacky_return(node, instructions: list[Instruction]) -> None:
-    match node:
+        case parser.Var(id):
+            return Var(id)
+        case parser.Assignment(parser.Var(id), right):
+            r = emit_tacky(right, instructions)
+            instructions.append(Copy(r, Var(id)))
+            return Var(id)
+        case parser.CompoundAssign(bop, l, r):
+            table = {parser.Bin_Op.ADD_ASSIGN: parser.Bin_Op.ADD,
+                     parser.Bin_Op.SUB_ASSIGN: parser.Bin_Op.SUBTRACT,
+                     parser.Bin_Op.MUL_ASSIGN: parser.Bin_Op.MULTIPLY,
+                     parser.Bin_Op.DIV_ASSIGN: parser.Bin_Op.DIVIDE,
+                     parser.Bin_Op.MOD_ASSIGN: parser.Bin_Op.REMAINDER,
+                     parser.Bin_Op.BAND_ASSIGN: parser.Bin_Op.BIT_AND,
+                     parser.Bin_Op.BOR_ASSIGN: parser.Bin_Op.BIT_OR,
+                     parser.Bin_Op.XOR_ASSIGN: parser.Bin_Op.XOR,
+                     parser.Bin_Op.LS_ASSIGN: parser.Bin_Op.LEFT_SHIFT,
+                     parser.Bin_Op.RS_ASSIGN: parser.Bin_Op.RIGHT_SHIFT}
+            bop2 = table[bop]
+            return emit_tacky(parser.Assignment(l, parser.Binary(bop2, l, r)),
+                              instructions)
+        case parser.DeclareNode(name, init):
+            if init is None:
+                # This should be discarded
+                return Var(name)
+            r = emit_tacky(init, instructions)
+            instructions.append(Copy(r, Var(name)))
+            return Var(name)
+        case parser.D(decl):
+            return emit_tacky(decl, instructions)
+        case parser.S(statement):
+            return emit_tacky(statement, instructions)
+        case parser.ExpNode(exp):
+            return emit_tacky(exp, instructions)
+        case parser.Null():
+            # This too should be discarded
+            return Var(Identifier('Null'))
         case parser.Return(exp):
             inner = emit_tacky(exp, instructions)
             instructions.append(Return(inner))
+            return inner
         case _:
-            raise RuntimeError(f'Non return node passed {node}')
+            raise RuntimeError(f'Uhandled Expression {node}')
 
 
 def emit_tacky_function(node: parser.Function) -> Function:
     match node:
         case parser.Function(name, body):
             arr: list[Instruction] = []
-            emit_tacky_return(body, arr)
+            for instr in body:
+                emit_tacky(instr, arr)
+            # To handle functions without returns
+            # Append this extra return 0
+            arr.append(Return(Constant(0)))
             return Function(name, arr)
         case _:
             raise RuntimeError(f'Non function node passed {node}')

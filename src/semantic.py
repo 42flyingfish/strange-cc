@@ -87,6 +87,12 @@ def resolve_exp(e: parser.Expression,
             new_left = resolve_exp(left, v)
             new_right = resolve_exp(right, v)
             return parser.Assignment(new_left, new_right)
+        case parser.CompoundAssign(bop, left, right):
+            if not isinstance(left, parser.Var):
+                raise RuntimeError('left is an invalid lvalue')
+            new_left = resolve_exp(left, v)
+            new_right = resolve_exp(right, v)
+            return parser.CompoundAssign(bop, new_left, new_right)
         case parser.Var(id):
             unique_id = v.lookup(id)
             if unique_id is None:

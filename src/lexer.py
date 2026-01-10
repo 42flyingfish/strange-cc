@@ -233,6 +233,11 @@ class TkRSEqual:
     pass
 
 
+@dataclass
+class TkIncrement:
+    pass
+
+
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace
@@ -277,7 +282,8 @@ Token = (TkOpenParenthesis
          | TkBOrEqual
          | TkXorEqual
          | TkLSEqual
-         | TkRSEqual)
+         | TkRSEqual
+         | TkIncrement)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -379,6 +385,9 @@ def tokenize_string(line: str) -> list[Token]:
                 peek = None if index > len(line) else line[index]
                 if peek == '=':
                     token_list.append(TkPlusEqual())
+                    index += 1
+                elif peek == '+':
+                    token_list.append(TkIncrement())
                     index += 1
                 else:
                     token_list.append(TkPlus())

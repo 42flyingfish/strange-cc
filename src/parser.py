@@ -20,6 +20,8 @@ class Unary_Operator(Enum):
     NEGATION = auto()
     COMPLEMENT = auto()
     NOT = auto()
+    INCREMENT = auto()
+    DECREMENT = auto()
 
 
 class Bin_Op(Enum):
@@ -81,7 +83,14 @@ class CompoundAssign:
     right: 'Expression'
 
 
-Expression = Constant | Var | Unary | Binary | Assignment | CompoundAssign
+@dataclass
+class Postfix:
+    increment: bool
+    exp: 'Expression'
+
+
+Expression = (Constant | Var | Unary | Binary | Assignment
+              | CompoundAssign | Postfix)
 
 
 @dataclass
@@ -274,6 +283,10 @@ def parse_uop(t: list[lexer.Token],
             return Unary_Operator.NEGATION, index+1
         case lexer.TkNot():
             return Unary_Operator.NOT, index+1
+        case lexer.TkIncrement():
+            return Unary_Operator.INCREMENT, index+1
+        case lexer.TkDecrement():
+            return Unary_Operator.DECREMENT, index+1
         case _:
             return None
 
@@ -331,38 +344,54 @@ def parse_block_item(t: list[lexer.Token],
 
 def parse_factor(t: list[lexer.Token],
                  index: int) -> tuple[Expression, int] | None:
-    if (index >= len(t)):
+    def inner(t: list[lexer.Token],
+              index: int) -> tuple[Expression, int] | None:
+        if (index >= len(t)):
+            return None
+        match t[index]:
+            case lexer.TkConstant():
+                return parse_constant(t, index)
+            case (lexer.TkMinus() | lexer.TkTilde() | lexer.TkNot()
+                  | lexer.TkIncrement() | lexer.TkDecrement()):
+                # TODO, this is needs a rework as more operators will come
+                op = parse_uop(t, index)
+                print(f'{op} is this')
+                if op is None:
+                    return None
+                operator, index = op
+                result = parse_factor(t, index)
+                if result is None:
+                    return None
+                inner_expr, index = result
+                return Unary(operator, inner_expr), index
+            case lexer.TkOpenParenthesis():
+                index += 1
+                result = parse_expr(t, index)
+                if result is None:
+                    return None
+                inner_expr, index = result
+                if not expect_tk(lexer.TkCloseParenthesis, t, index):
+                    return None
+                index += 1
+                return (inner_expr, index)
+            case _:
+                id_result = parse_identifier(t, index)
+                if id_result is None:
+                    return None
+                id, index = id_result
+                return Var(id), index
+    result = inner(t, index)
+    if result is None:
         return None
-    match t[index]:
-        case lexer.TkConstant():
-            return parse_constant(t, index)
-        case lexer.TkMinus() | lexer.TkTilde() | lexer.TkNot():
-            # TODO, this is needs a rework as more operators will come
-            op = parse_uop(t, index)
-            if op is None:
-                return None
-            operator, index = op
-            result = parse_factor(t, index)
-            if result is None:
-                return None
-            inner_expr, index = result
-            return Unary(operator, inner_expr), index
-        case lexer.TkOpenParenthesis():
-            index += 1
-            result = parse_expr(t, index)
-            if result is None:
-                return None
-            inner_expr, index = result
-            if not expect_tk(lexer.TkCloseParenthesis, t, index):
-                return None
-            index += 1
-            return (inner_expr, index)
+    factor, index = result
+    peek = None if index > len(t) else t[index]
+    match peek:
+        case lexer.TkIncrement():
+            return Postfix(True, factor), index+1
+        case lexer.TkDecrement():
+            return Postfix(False, factor), index+1
         case _:
-            id_result = parse_identifier(t, index)
-            if id_result is None:
-                return None
-            id, index = id_result
-            return Var(id), index
+            return result
 
 
 def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:

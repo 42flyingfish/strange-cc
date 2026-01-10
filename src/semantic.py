@@ -99,15 +99,21 @@ def resolve_exp(e: parser.Expression,
                 raise RuntimeError(f'Id {id} is not in scope')
             return parser.Var(unique_id)
         case parser.Unary(up, exp):
-            print('Hits this')
-            print(exp)
+            PREFIX = {parser.Unary_Operator.INCREMENT,
+                      parser.Unary_Operator.DECREMENT}
+            if up in PREFIX and not isinstance(exp, parser.Var):
+                raise RuntimeError('exp is an invalid lvalue')
             new_exp = resolve_exp(exp, v)
-            print(new_exp)
             return parser.Unary(up, new_exp)
         case parser.Binary(bop, left, right):
             new_left = resolve_exp(left, v)
             new_right = resolve_exp(right, v)
             return parser.Binary(bop, new_left, new_right)
+        case parser.Postfix(b, exp):
+            if not isinstance(exp, parser.Var):
+                raise RuntimeError('exp is an invalid lvalue')
+            new_exp = resolve_exp(exp, v)
+            return parser.Postfix(b, new_exp)
         case _:
             raise RuntimeError(f'Impossible {e}')
 

@@ -182,6 +182,16 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
     match node:
         case parser.Constant(x):
             return Constant(x=int(x))
+        case parser.Unary(parser.Unary_Operator.INCREMENT, a):
+            tacky_dst = emit_tacky(a, instructions)
+            node = Binary(Bin_Op.ADD, tacky_dst, Constant(1), tacky_dst)
+            instructions.append(node)
+            return tacky_dst
+        case parser.Unary(parser.Unary_Operator.DECREMENT, a):
+            tacky_dst = emit_tacky(a, instructions)
+            node = Binary(Bin_Op.SUBTRACT, tacky_dst, Constant(1), tacky_dst)
+            instructions.append(node)
+            return tacky_dst
         case parser.Unary(op, operand):
             tacky_op = convert_unop(op)
             src = emit_tacky(operand, instructions)
@@ -264,6 +274,19 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             inner = emit_tacky(exp, instructions)
             instructions.append(Return(inner))
             return inner
+        case parser.Postfix(True, exp):
+            tmp = Var(make_temporary('postfix_inc'))
+            src = emit_tacky(exp, instructions)
+            instructions.extend((Copy(src, tmp),
+                                 Binary(Bin_Op.ADD, src, Constant(1), src)))
+            return tmp
+        case parser.Postfix(False, exp):
+            tmp = Var(make_temporary('postfix_dec'))
+            src = emit_tacky(exp, instructions)
+            instructions.extend((Copy(src, tmp),
+                                 Binary(Bin_Op.SUBTRACT,
+                                        src, Constant(1), src)))
+            return tmp
         case _:
             raise RuntimeError(f'Uhandled Expression {node}')
 

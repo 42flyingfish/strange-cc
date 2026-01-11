@@ -238,6 +238,16 @@ class TkIncrement:
     pass
 
 
+@dataclass
+class TkQuestion:
+    pass
+
+
+@dataclass
+class TkIf:
+    pass
+
+
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace
@@ -283,7 +293,9 @@ Token = (TkOpenParenthesis
          | TkXorEqual
          | TkLSEqual
          | TkRSEqual
-         | TkIncrement)
+         | TkIncrement
+         | TkQuestion
+         | TkIf)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -310,6 +322,8 @@ def parse_identity_keyword(x: str) -> tuple[Token, int]:
             return (TkVoid(), token_len)
         case 'return':
             return (TkReturn(), token_len)
+        case 'if':
+            return (TkIf(), token_len)
         case _:
             return (TkIdentifier(token_string), token_len)
 
@@ -479,6 +493,9 @@ def tokenize_string(line: str) -> list[Token]:
                     index += 1
                 else:
                     token_list.append(TkNot())
+            case '?':
+                index += 1
+                token_list.append(TkQuestion())
             case c if c in whitespace:
                 # TODO Handle whitespace for strings
                 index += 1

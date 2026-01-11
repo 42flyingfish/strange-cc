@@ -248,6 +248,11 @@ class TkIf:
     pass
 
 
+@dataclass
+class TkElse:
+    pass
+
+
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace
@@ -295,7 +300,8 @@ Token = (TkOpenParenthesis
          | TkRSEqual
          | TkIncrement
          | TkQuestion
-         | TkIf)
+         | TkIf
+         | TkElse)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -324,6 +330,8 @@ def parse_identity_keyword(x: str) -> tuple[Token, int]:
             return (TkReturn(), token_len)
         case 'if':
             return (TkIf(), token_len)
+        case 'else':
+            return (TkElse(), token_len)
         case _:
             return (TkIdentifier(token_string), token_len)
 

@@ -287,6 +287,39 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
                                  Binary(Bin_Op.SUBTRACT,
                                         src, Constant(1), src)))
             return tmp
+        case parser.If(exp, then):
+            end_label = make_temporary('end_of_if')
+            c = emit_tacky(exp, instructions)
+            instructions.append(JumpIfZero(c, end_label))
+            _ = emit_tacky(then, instructions)
+            instructions.append(Label(end_label))
+            return Var(Identifier('Null'))
+        case parser.IfElse(exp, then, otherwise):
+            end_label = make_temporary('end_of_if_else')
+            other_label = make_temporary('otherwise')
+            c = emit_tacky(exp, instructions)
+            instructions.append(JumpIfZero(c, other_label))
+            _ = emit_tacky(then, instructions)
+            instructions.extend((Jump(end_label),
+                                 Label(other_label)))
+            _ = emit_tacky(otherwise, instructions)
+            instructions.append(Label(end_label))
+            return Var(Identifier('Null'))
+        case parser.Conditional(cond, t, f):
+            tmp = Var(make_temporary('ternary_result'))
+            end_label = make_temporary('end_ternary')
+            other_label = make_temporary('otherwise')
+            c = emit_tacky(cond, instructions)
+            instructions.append(JumpIfZero(c, other_label))
+            v1 = emit_tacky(t, instructions)
+            instructions.extend((Copy(v1, tmp),
+                                 Jump(end_label),
+                                 Label(other_label)))
+            v2 = emit_tacky(f, instructions)
+            instructions.extend((Copy(v2, tmp),
+                                 Label(end_label)))
+
+            return tmp
         case _:
             raise RuntimeError(f'Uhandled Expression {node}')
 

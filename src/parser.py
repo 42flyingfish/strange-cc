@@ -165,51 +165,53 @@ def expect_tk(kind: Type,
     return False
 
 
-def precedence(operator: Bin_Op) -> int:
+def precedence(operator) -> int | None:
+    # This takes tokens and gives the respective precedence
+    # as if these were binary or ternary operators
+    # Unary operators are handled elsewhere
     match operator:
-        case Bin_Op.MULTIPLY:
+        case (lexer.TkAsterisk()
+              | lexer.TkForwardSlash()
+              | lexer.TkPercent()):
             return 50
-        case Bin_Op.DIVIDE:
-            return 50
-        case Bin_Op.REMAINDER:
-            return 50
-        case Bin_Op.ADD:
+        case (lexer.TkPlus()
+              | lexer.TkMinus()):
             return 45
-        case Bin_Op.SUBTRACT:
-            return 45
-        case Bin_Op.LEFT_SHIFT | Bin_Op.RIGHT_SHIFT:
+        case (lexer.TkLShift()
+              | lexer.TkRShift()):
             return 40
-        case Bin_Op.LESS_THAN | Bin_Op.LESS_EQUAL:
+        case (lexer.TkLessThan()
+              | lexer.TkLessEqual()
+              | lexer.TkGreaterThan()
+              | lexer.TkGreaterEqual()):
             return 35
-        case Bin_Op.GREATER_THAN | Bin_Op.GREATER_EQUAL:
-            return 35
-        case Bin_Op.EQUAL | Bin_Op.NOT_EQUAL:
+        case (lexer.TkDEqual()
+              | lexer.TkNotEqual()):
             return 30
-        case Bin_Op.BIT_AND:
+        case lexer.TkBAnd():
             return 25
-        case Bin_Op.XOR:
+        case lexer.TkXor():
             return 20
-        case Bin_Op.BIT_OR:
+        case lexer.TkBOr():
             return 15
-        case Bin_Op.LOG_AND:
+        case lexer.TkLAnd():
             return 10
-        case Bin_Op.LOG_OR:
+        case lexer.TkLOr():
             return 5
-        case Bin_Op.ASSIGN:
-            return 1
-        case (Bin_Op.ADD_ASSIGN
-              | Bin_Op.SUB_ASSIGN
-              | Bin_Op.MUL_ASSIGN
-              | Bin_Op.DIV_ASSIGN
-              | Bin_Op.MOD_ASSIGN
-              | Bin_Op.BAND_ASSIGN
-              | Bin_Op.BOR_ASSIGN
-              | Bin_Op.XOR_ASSIGN
-              | Bin_Op.LS_ASSIGN
-              | Bin_Op.RS_ASSIGN):
+        case (lexer.TkEqual()
+              | lexer.TkPlusEqual()
+              | lexer.TkSubEqual() 
+              | lexer.TkMulEqual()
+              | lexer.TkDivEqual()
+              | lexer.TkModEqual()
+              | lexer.TkBAndEqual()
+              | lexer.TkBOrEqual()
+              | lexer.TkXorEqual()
+              | lexer.TkLSEqual()
+              | lexer.TkRSEqual()):
             return 1
         case _:
-            raise RuntimeError(f'Unhandled binary operator {operator}')
+            return None
 
 
 def parse_constant(t: list[lexer.Token],
@@ -469,37 +471,46 @@ def parse_expr(t: list[lexer.Token],
     if result is None:
         return None
     left, index = result
-
-    while True:
-        op = parse_binop(t, index)
-        if op is None:
-            break
-        binop, new_index = op
-        if precedence(binop) < min_prec:
-            break
-        if binop == Bin_Op.ASSIGN:
-            right_result = parse_expr(t, new_index, precedence(binop))
-            if right_result is None:
-                return None
-            right, new_index = right_result
-            left = Assignment(left, right)
-        elif binop in {Bin_Op.ADD_ASSIGN, Bin_Op.SUB_ASSIGN,
-                       Bin_Op.MUL_ASSIGN, Bin_Op.DIV_ASSIGN,
-                       Bin_Op.MOD_ASSIGN, Bin_Op.BAND_ASSIGN,
-                       Bin_Op.BOR_ASSIGN, Bin_Op.XOR_ASSIGN,
-                       Bin_Op.LS_ASSIGN, Bin_Op.RS_ASSIGN}:
-            right_result = parse_expr(t, new_index, precedence(binop))
-            if right_result is None:
-                return None
-            right, new_index = right_result
-            left = CompoundAssign(binop, left, right)
-        else:
-            result = parse_expr(t, new_index, precedence(binop)+1)
-            if result is None:
-                break
-            right, new_index = result
-            left = Binary(binop, left, right)
-        index = new_index
+    peek = None if index > len(t) else t[index]
+    while (prec := precedence(peek)) is not None and prec >= min_prec:
+        match peek:
+            case lexer.TkEqual():
+                index = index + 1
+                right_result = parse_expr(t, index, prec)
+                if right_result is None:
+                    return None
+                right, index = right_result
+                left = Assignment(left, right)
+            case (lexer.TkPlusEqual()
+                  | lexer.TkSubEqual()
+                  | lexer.TkMulEqual()
+                  | lexer.TkDivEqual()
+                  | lexer.TkModEqual()
+                  | lexer.TkBAndEqual()
+                  | lexer.TkBOrEqual()
+                  | lexer.TkXorEqual()
+                  | lexer.TkLSEqual()
+                  | lexer.TkRSEqual()):
+                binop_result = parse_binop(t, index)
+                if binop_result is None:
+                    return None
+                binop, index = binop_result
+                right_result = parse_expr(t, index, prec)
+                if right_result is None:
+                    return None
+                right, index = right_result
+                left = CompoundAssign(binop, left, right)
+            case _:
+                binop_result = parse_binop(t, index)
+                if binop_result is None:
+                    return None
+                binop, index = binop_result
+                result = parse_expr(t, index, prec+1)
+                if result is None:
+                    return None
+                right, index = result
+                left = Binary(binop, left, right)
+        peek = None if index > len(t) else t[index]
     return left, index
 
 

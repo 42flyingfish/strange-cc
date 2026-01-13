@@ -89,8 +89,15 @@ class Postfix:
     exp: 'Expression'
 
 
+@dataclass
+class Conditional:
+    condition: 'Expression'
+    t: 'Expression'
+    f: 'Expression'
+
+
 Expression = (Constant | Var | Unary | Binary | Assignment
-              | CompoundAssign | Postfix)
+              | CompoundAssign | Postfix | Conditional)
 
 
 @dataclass
@@ -102,13 +109,30 @@ class Return:
 class ExpNode:
     exp: Expression
 
+# Oddly enough trying to forward declare Statement and making optional
+# causes a TypeError where it thinks that it is a str
+# Until I figure out what I did wrong, I am declaring them seperate
+
+
+@dataclass
+class If:
+    condition: Expression
+    then: 'Statement'
+
+
+@dataclass
+class IfElse:
+    condition: Expression
+    then: 'Statement'
+    otherwise: 'Statement'
+
 
 @dataclass
 class Null:
     pass
 
 
-Statement = Return | ExpNode | Null
+Statement = Return | ExpNode | If | IfElse | Null
 
 
 @dataclass
@@ -146,7 +170,7 @@ class Program:
 
 def expect_tk(kind: Type,
               tokens: list[lexer.Token],
-              index: int, verbosity=True) -> bool:
+              index: int, verbosity=False) -> bool:
     if (index >= len(tokens)):
         return False
 
@@ -198,6 +222,8 @@ def precedence(operator) -> int | None:
             return 10
         case lexer.TkLOr():
             return 5
+        case lexer.TkQuestion():
+            return 4
         case (lexer.TkEqual()
               | lexer.TkPlusEqual()
               | lexer.TkSubEqual() 
@@ -302,6 +328,34 @@ def parse_statement(t: list[lexer.Token],
             return Null(), index+1
         case lexer.TkReturn():
             return parse_return(t, index)
+        case lexer.TkIf():
+            index += 1
+            if not expect_tk(lexer.TkOpenParenthesis, t, index):
+                return None
+            index += 1
+            exp_result = parse_expr(t, index)
+            if exp_result is None:
+                return None
+            exp, index = exp_result
+            if not expect_tk(lexer.TkCloseParenthesis, t, index):
+                return None
+            index += 1
+            stm_result = parse_statement(t, index)
+            if stm_result is None:
+                return None
+            stm, index = stm_result
+            if expect_tk(lexer.TkElse, t, index):
+                index += 1
+                stm_result = parse_statement(t, index)
+                if stm_result is None:
+                    return None
+                otherwise, index = stm_result
+                if otherwise is None:
+                    return If(exp, stm), index
+                else:
+                    return IfElse(exp, stm, otherwise), index
+            else:
+                return If(exp, stm), index
         case _:
             return parse_exprNode(t, index)
 
@@ -357,7 +411,6 @@ def parse_factor(t: list[lexer.Token],
                   | lexer.TkIncrement() | lexer.TkDecrement()):
                 # TODO, this is needs a rework as more operators will come
                 op = parse_uop(t, index)
-                print(f'{op} is this')
                 if op is None:
                     return None
                 operator, index = op
@@ -462,6 +515,20 @@ def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:
             return None
 
 
+def parse_cond_middle(t: list[lexer.Token],
+                      index: int) -> tuple[Expression, int] | None:
+    if not expect_tk(lexer.TkQuestion, t, index):
+        return None
+    index += 1
+    exp_result = parse_expr(t, index)
+    if exp_result is None:
+        return None
+    exp, index = exp_result
+    if not expect_tk(lexer.TkColon, t, index):
+        return None
+    return exp, index+1
+
+
 def parse_expr(t: list[lexer.Token],
                index: int,
                min_prec: int = 0) -> tuple[Expression, int] | None:
@@ -500,6 +567,16 @@ def parse_expr(t: list[lexer.Token],
                     return None
                 right, index = right_result
                 left = CompoundAssign(binop, left, right)
+            case lexer.TkQuestion():
+                middle_result = parse_cond_middle(t, index)
+                if middle_result is None:
+                    return None
+                middle, index = middle_result
+                exp_result = parse_expr(t, index, prec)
+                if exp_result is None:
+                    return None
+                right, index = exp_result
+                return Conditional(left, middle, right), index
             case _:
                 binop_result = parse_binop(t, index)
                 if binop_result is None:

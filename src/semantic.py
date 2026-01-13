@@ -72,6 +72,15 @@ def resolve_statement(s: parser.Statement,
         case parser.ExpNode(exp):
             e = resolve_exp(exp, v)
             return parser.ExpNode(e)
+        case parser.If(cond, then):
+            new_cond = resolve_exp(cond, v)
+            new_then = resolve_statement(then, v)
+            return parser.If(new_cond, new_then)
+        case parser.IfElse(cond, then, otherwise):
+            new_cond = resolve_exp(cond, v)
+            new_then = resolve_statement(then, v)
+            new_otherwise = resolve_statement(otherwise, v)
+            return parser.IfElse(new_cond, new_then, new_otherwise)
         case _:
             raise RuntimeError('Impossible')
 
@@ -114,6 +123,11 @@ def resolve_exp(e: parser.Expression,
                 raise RuntimeError('exp is an invalid lvalue')
             new_exp = resolve_exp(exp, v)
             return parser.Postfix(b, new_exp)
+        case parser.Conditional(cond, t, f):
+            new_cond = resolve_exp(cond, v)
+            new_t = resolve_exp(t, v)
+            new_f = resolve_exp(f, v)
+            return parser.Conditional(new_cond, new_t, new_f)
         case _:
             raise RuntimeError(f'Impossible {e}')
 

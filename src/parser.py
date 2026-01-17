@@ -613,7 +613,7 @@ def parse_expr(t: list[lexer.Token],
                 if exp_result is None:
                     return None
                 right, index = exp_result
-                return Conditional(left, middle, right), index
+                left = Conditional(left, middle, right)
             case _:
                 binop_result = parse_binop(t, index)
                 if binop_result is None:

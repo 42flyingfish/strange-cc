@@ -320,6 +320,12 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
                                  Label(end_label)))
 
             return tmp
+        case parser.Label(id, stm):
+            instructions.append(Label(id))
+            return emit_tacky(stm, instructions)
+        case parser.Goto(id):
+            instructions.append(Jump(id))
+            return Var(Identifier('Null'))
         case _:
             raise RuntimeError(f'Uhandled Expression {node}')
 

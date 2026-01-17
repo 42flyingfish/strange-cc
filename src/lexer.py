@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from itertools import chain, takewhile
+from itertools import takewhile
 from string import ascii_letters, digits, whitespace
+from typing import Generator
 
 
 @dataclass
@@ -253,6 +254,11 @@ class TkElse:
     pass
 
 
+@dataclass
+class TkGoto:
+    pass
+
+
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace
@@ -301,7 +307,8 @@ Token = (TkOpenParenthesis
          | TkIncrement
          | TkQuestion
          | TkIf
-         | TkElse)
+         | TkElse
+         | TkGoto)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -332,95 +339,96 @@ def parse_identity_keyword(x: str) -> tuple[Token, int]:
             return (TkIf(), token_len)
         case 'else':
             return (TkElse(), token_len)
+        case 'goto':
+            return (TkGoto(), token_len)
         case _:
             return (TkIdentifier(token_string), token_len)
 
 
-def tokenize_string(line: str) -> list[Token]:
+def tokenize_string(line: str) -> Generator[Token]:
     """Takes a str and return a list of matching tokens"""
     CHRS = ascii_letters + '_'
-    token_list: list[Token] = []
     index = 0
 
     while index < len(line):
         match item := line[index]:
             case '(':
-                token_list.append(TkOpenParenthesis())
+                yield TkOpenParenthesis()
                 index += 1
             case ')':
-                token_list.append(TkCloseParenthesis())
+                yield TkCloseParenthesis()
                 index += 1
             case '{':
-                token_list.append(TkOpenBrace())
+                yield TkOpenBrace()
                 index += 1
             case '}':
-                token_list.append(TkCloseBrace())
+                yield TkCloseBrace()
                 index += 1
             case ';':
-                token_list.append(TkSemicolon())
+                yield TkSemicolon()
                 index += 1
             case '/':
                 index += 1
                 peek = None if index > len(line) else line[index]
                 # checking for a line comment
                 if peek == '/':
-                    return token_list
+                    return
                 elif peek == '=':
                     index += 1
-                    token_list.append(TkDivEqual())
+                    yield TkDivEqual()
                 else:
-                    token_list.append(TkForwardSlash())
+                    yield TkForwardSlash()
             case '-':
                 index += 1
                 peek = None if index > len(line) else line[index]
                 # checking for --
                 if peek == '-':
-                    token_list.append(TkDecrement())
+                    yield TkDecrement()
                     index += 1
                 elif peek == '=':
-                    token_list.append(TkSubEqual())
+                    yield TkSubEqual()
                     index += 1
                 else:
-                    token_list.append(TkMinus())
+                    yield TkMinus()
             case '~':
-                token_list.append(TkTilde())
+                yield TkTilde()
                 index += 1
             case ':':
-                token_list.append(TkColon())
+                yield TkColon()
                 index += 1
             case '\'':
-                token_list.append(TkBackSlash())
+                yield TkBackSlash()
                 index += 1
             case '*':
                 index += 1
                 peek = None if index > len(line) else line[index]
                 if peek == '=':
                     index += 1
-                    token_list.append(TkMulEqual())
+                    yield TkMulEqual()
                 else:
-                    token_list.append(TkAsterisk())
+                    yield TkAsterisk()
             case ',':
-                token_list.append(TkComma())
+                yield TkComma()
                 index += 1
             case '+':
                 index += 1
                 peek = None if index > len(line) else line[index]
                 if peek == '=':
-                    token_list.append(TkPlusEqual())
+                    yield TkPlusEqual()
                     index += 1
                 elif peek == '+':
-                    token_list.append(TkIncrement())
+                    yield TkIncrement()
                     index += 1
                 else:
-                    token_list.append(TkPlus())
+                    yield TkPlus()
             case '%':
                 index += 1
                 peek = None if index > len(line) else line[index]
                 if peek == '=':
                     index += 1
-                    token_list.append(TkModEqual())
+                    yield TkModEqual()
                 else:
-                    token_list.append(TkPercent())
+                    yield TkPercent()
 
             case '<':
                 index += 1
@@ -431,14 +439,14 @@ def tokenize_string(line: str) -> list[Token]:
                     peek = None if index > len(line) else line[index]
                     if peek == '=':
                         index += 1
-                        token_list.append(TkLSEqual())
+                        yield TkLSEqual()
                     else:
-                        token_list.append(TkLShift())
+                        yield TkLShift()
                 elif peek == '=':
-                    token_list.append(TkLessEqual())
+                    yield TkLessEqual()
                     index += 1
                 else:
-                    token_list.append(TkLessThan())
+                    yield TkLessThan()
             case '>':
                 index += 1
                 peek = None if index > len(line) else line[index]
@@ -447,63 +455,63 @@ def tokenize_string(line: str) -> list[Token]:
                     peek = None if index > len(line) else line[index]
                     if peek == '=':
                         index += 1
-                        token_list.append(TkRSEqual())
+                        yield TkRSEqual()
                     else:
-                        token_list.append(TkRShift())
+                        yield TkRShift()
                 elif peek == '=':
-                    token_list.append(TkGreaterEqual())
+                    yield TkGreaterEqual()
                     index += 1
                 else:
-                    token_list.append(TkGreaterThan())
+                    yield TkGreaterThan()
             case '&':
                 index += 1
                 peek = None if index > len(line) else line[index]
                 if peek == '&':
-                    token_list.append(TkLAnd())
+                    yield TkLAnd()
                     index += 1
                 elif peek == '=':
-                    token_list.append(TkBAndEqual())
+                    yield TkBAndEqual()
                     index += 1
                 else:
-                    token_list.append(TkBAnd())
+                    yield TkBAnd()
             case '|':
                 index += 1
                 peek = None if index > len(line) else line[index]
                 if peek == '|':
-                    token_list.append(TkLOr())
+                    yield TkLOr()
                     index += 1
                 elif peek == '=':
-                    token_list.append(TkBOrEqual())
+                    yield TkBOrEqual()
                     index += 1
                 else:
-                    token_list.append(TkBOr())
+                    yield TkBOr()
             case '^':
                 index += 1
                 peek = None if index > len(line) else line[index]
                 if peek == '=':
-                    token_list.append(TkXorEqual())
+                    yield TkXorEqual()
                     index += 1
                 else:
-                    token_list.append(TkXor())
+                    yield TkXor()
             case '=':
                 index += 1
                 # checking for !=
                 if index <= len(line) and line[index] == '=':
-                    token_list.append(TkDEqual())
+                    yield TkDEqual()
                     index += 1
                 else:
-                    token_list.append(TkEqual())
+                    yield TkEqual()
             case '!':
                 index += 1
                 # checking for !=
                 if index <= len(line) and line[index] == '=':
-                    token_list.append(TkNotEqual())
+                    yield TkNotEqual()
                     index += 1
                 else:
-                    token_list.append(TkNot())
+                    yield TkNot()
             case '?':
                 index += 1
-                token_list.append(TkQuestion())
+                yield TkQuestion()
             case c if c in whitespace:
                 # TODO Handle whitespace for strings
                 index += 1
@@ -511,18 +519,18 @@ def tokenize_string(line: str) -> list[Token]:
                 # TODO Start of a constant token
                 # Output should either be a valid constant or an invalid token
                 thing = parse_constant(line[index:])
-                token_list.append(thing)
+                yield thing
                 index += len(thing.val)
             case c if c in CHRS:
                 ret, ret_len = parse_identity_keyword(line[index:])
-                token_list.append(ret)
+                yield ret
                 index += ret_len
             case _:
                 raise ValueError(f'Unkown token prefix {item}')
-    return token_list
 
 
 def tokenize_file(filepath: str) -> list[Token]:
     with open(filepath, 'r') as f:
-        result = list(chain(*(tokenize_string(line) for line in f)))
+        result = [t for line in f for t in tokenize_string(line)]
+        # result = list(chain(*(tokenize_string(line) for line in f)))
         return result

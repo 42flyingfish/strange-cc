@@ -81,6 +81,11 @@ def resolve_statement(s: parser.Statement,
             new_then = resolve_statement(then, v)
             new_otherwise = resolve_statement(otherwise, v)
             return parser.IfElse(new_cond, new_then, new_otherwise)
+        case parser.Label(id, stm):
+            new_stm = resolve_statement(stm, v)
+            return parser.Label(id, new_stm)
+        case parser.Goto():
+            return s
         case _:
             raise RuntimeError('Impossible')
 

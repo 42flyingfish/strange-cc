@@ -132,7 +132,19 @@ class Null:
     pass
 
 
-Statement = Return | ExpNode | If | IfElse | Null
+@dataclass
+class Label:
+    id: Identifier
+    stm: 'Statement'
+
+
+@dataclass
+class Goto:
+    id: Identifier
+
+
+Statement = (Return | ExpNode | If
+             | IfElse | Null | Label | Goto)
 
 
 @dataclass
@@ -356,6 +368,31 @@ def parse_statement(t: list[lexer.Token],
                     return IfElse(exp, stm, otherwise), index
             else:
                 return If(exp, stm), index
+        case lexer.TkIdentifier(val):
+            print(f'val is this scary thing {val}')
+            index += 1
+            if not expect_tk(lexer.TkColon, t, index):
+                # This might be a expression instead
+                # for example val + 1;
+                index -= 1
+                return parse_exprNode(t, index)
+            index += 1
+            print('Colon found')
+            stm_result = parse_statement(t, index)
+            if stm_result is None:
+                print('No statement found')
+                return None
+            stm, index = stm_result
+            return Label(Identifier(val), stm), index
+        case lexer.TkGoto():
+            index += 1
+            id_result = parse_identifier(t, index)
+            if id_result is None:
+                return None
+            id, index = id_result
+            if expect_tk(lexer.TkSemicolon, t, index):
+                return Goto(id), index+1
+            return None
         case _:
             return parse_exprNode(t, index)
 

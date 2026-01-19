@@ -476,14 +476,16 @@ def parse_factor(t: list[lexer.Token],
     if result is None:
         return None
     factor, index = result
-    peek = None if index > len(t) else t[index]
-    match peek:
-        case lexer.TkIncrement():
-            return Postfix(True, factor), index+1
-        case lexer.TkDecrement():
-            return Postfix(False, factor), index+1
-        case _:
-            return result
+    while True:
+        peek = None if index > len(t) else t[index]
+        match peek:
+            case lexer.TkIncrement():
+                factor, index = Postfix(True, factor), index+1
+            case lexer.TkDecrement():
+                factor, index = Postfix(False, factor), index+1
+            case _:
+                break
+    return factor, index
 
 
 def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:

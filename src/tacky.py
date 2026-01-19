@@ -318,6 +318,12 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
         case parser.Goto(id):
             instructions.append(Jump(id))
             return Var(Identifier('Null'))
+        case parser.Block(block_items):
+            for item in block_items:
+                emit_tacky(item, instructions)
+            return Var(Identifier('Null'))
+        case parser.Compound(block):
+            return emit_tacky(block, instructions)
         case _:
             raise RuntimeError(f'Uhandled Expression {node}')
 
@@ -326,8 +332,7 @@ def emit_tacky_function(node: parser.Function) -> Function:
     match node:
         case parser.Function(name, body):
             arr: list[Instruction] = []
-            for instr in body:
-                emit_tacky(instr, arr)
+            emit_tacky(body, arr)
             # To handle functions without returns
             # Append this extra return 0
             arr.append(Return(Constant(0)))

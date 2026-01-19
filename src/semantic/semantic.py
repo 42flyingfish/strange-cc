@@ -44,8 +44,14 @@ def resolve_declaration(d: parser.Declaration,
 def resolve_func(f: parser.Function,
                  v: VariableMap) -> parser.Function:
     """ Resolves the function contents but not the function as of yet"""
-    items = [resolve_blockItem(b, v) for b in f.body]
-    return parser.Function(f.name, items)
+    items = resolve_block(f.body, v)
+    return replace(f, body=items)
+
+
+def resolve_block(b: parser.Block,
+                  v: VariableMap) -> parser.Block:
+    items = [resolve_blockItem(x, v) for x in b.block_items]
+    return replace(b, block_items=items)
 
 
 def resolve_blockItem(b: parser.Block_Item,
@@ -86,6 +92,11 @@ def resolve_statement(s: parser.Statement,
             return parser.Label(id, new_stm)
         case parser.Goto():
             return s
+        case parser.Compound(block):
+            v.push()
+            new_block = resolve_block(block, v)
+            v.pop()
+            return replace(s, block=new_block)
         case _:
             raise RuntimeError('Impossible')
 

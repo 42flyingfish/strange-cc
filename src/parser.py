@@ -143,8 +143,19 @@ class Goto:
     id: Identifier
 
 
-Statement = (Return | ExpNode | If
-             | IfElse | Null | Label | Goto)
+@dataclass
+class Compound:
+    block: 'Block'
+
+
+Statement = (Return
+             | ExpNode
+             | If
+             | IfElse
+             | Null
+             | Label
+             | Goto
+             | Compound)
 
 
 @dataclass
@@ -170,9 +181,14 @@ Block_Item = S | D
 
 
 @dataclass
+class Block:
+    block_items: list[Block_Item]
+
+
+@dataclass
 class Function:
     name: Identifier
-    body: list[Block_Item]
+    body: Block
 
 
 @dataclass
@@ -389,6 +405,12 @@ def parse_statement(t: list[lexer.Token],
             if expect_tk(lexer.TkSemicolon, t, index):
                 return Goto(id), index+1
             return None
+        case lexer.TkOpenBrace():
+            block_result = parse_block(t, index)
+            if block_result is None:
+                return None
+            body, index = block_result
+            return Compound(body), index
         case _:
             return parse_exprNode(t, index)
 
@@ -626,6 +648,20 @@ def parse_expr(t: list[lexer.Token],
     return left, index
 
 
+def parse_block(t: list[lexer.Token],
+                index: int) -> tuple[Block, int] | None:
+    if not expect_tk(lexer.TkOpenBrace, t, index):
+        return None
+    index += 1
+    body: list[Block_Item] = list()
+    while (b_result := parse_block_item(t, index)) is not None:
+        item, index = b_result
+        body.append(item)
+    if not expect_tk(lexer.TkCloseBrace, t, index):
+        return None
+    return Block(body), index+1
+
+
 def parse_function(t: list[lexer.Token],
                    index: int) -> tuple[Function, int] | None:
     if not expect_tk(lexer.TkInt, t, index):
@@ -638,8 +674,7 @@ def parse_function(t: list[lexer.Token],
 
     TK_CHUNK = (lexer.TkOpenParenthesis,
                 lexer.TkVoid,
-                lexer.TkCloseParenthesis,
-                lexer.TkOpenBrace)
+                lexer.TkCloseParenthesis)
 
     for kind in TK_CHUNK:
         if not expect_tk(kind, t, index):
@@ -647,13 +682,10 @@ def parse_function(t: list[lexer.Token],
         else:
             index += 1
 
-    body: list[Block_Item] = list()
-    while (b_result := parse_block_item(t, index)) is not None:
-        item, index = b_result
-        body.append(item)
-    if not expect_tk(lexer.TkCloseBrace, t, index):
+    body_result = parse_block(t, index)
+    if body_result is None:
         return None
-    index += 1
+    body, index = body_result
     return (Function(r_ident[0], body), index)
 
 

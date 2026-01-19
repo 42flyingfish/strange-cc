@@ -1,7 +1,7 @@
 import parser
-from utility import Identifier
-from tacky import make_temporary
+from dataclasses import replace
 
+from utility import Identifier, make_temporary
 
 ScopeStack = list[dict[Identifier, Identifier]]
 

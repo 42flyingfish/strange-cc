@@ -1,16 +1,8 @@
 import parser
 from dataclasses import dataclass
 from enum import Enum, auto
-from itertools import count
 
-from utility import Identifier
-
-# Nasty Global for use below
-counter = count()
-
-
-def make_temporary(prefix='tmp') -> Identifier:
-    return Identifier(f'{prefix}{next(counter)}')
+from utility import Identifier, make_temporary
 
 
 class Unary_Operator(Enum):

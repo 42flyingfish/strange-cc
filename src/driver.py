@@ -54,7 +54,7 @@ def handle_args():
         return
     # TODO make use of the TACKY Immediate Representation
     resolved = semantic.resolve_program(x)
-    resolved = goto.resolve_program(x)
+    resolved = goto.resolve_program(resolved)
     if args.validate:
         return
     tacky_ast = tacky.emit_tack_program(resolved)

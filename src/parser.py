@@ -238,7 +238,7 @@ def precedence(operator) -> int | None:
             return 4
         case (lexer.TkEqual()
               | lexer.TkPlusEqual()
-              | lexer.TkSubEqual() 
+              | lexer.TkSubEqual()
               | lexer.TkMulEqual()
               | lexer.TkDivEqual()
               | lexer.TkModEqual()
@@ -369,18 +369,14 @@ def parse_statement(t: list[lexer.Token],
             else:
                 return If(exp, stm), index
         case lexer.TkIdentifier(val):
-            print(f'val is this scary thing {val}')
             index += 1
             if not expect_tk(lexer.TkColon, t, index):
                 # This might be a expression instead
                 # for example val + 1;
-                index -= 1
-                return parse_exprNode(t, index)
+                return parse_exprNode(t, index-1)
             index += 1
-            print('Colon found')
             stm_result = parse_statement(t, index)
             if stm_result is None:
-                print('No statement found')
                 return None
             stm, index = stm_result
             return Label(Identifier(val), stm), index

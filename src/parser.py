@@ -148,6 +148,42 @@ class Compound:
     block: 'Block'
 
 
+@dataclass
+class Break:
+    label: Identifier = Identifier('')
+
+
+@dataclass
+class Continue:
+    label: Identifier = Identifier('')
+
+
+@dataclass
+class While:
+    condition: Expression
+    body: 'Statement'
+    label: Identifier = Identifier('')
+
+
+@dataclass
+class DoWhile:
+    body: 'Statement'
+    condition: Expression
+    label: Identifier = Identifier('')
+
+
+type ForInit = 'Declaration' | Expression | None
+
+
+@dataclass
+class For:
+    init: ForInit
+    condition: Expression | None
+    post: Expression | None
+    body: 'Statement'
+    label: Identifier = Identifier('')
+
+
 Statement = (Return
              | ExpNode
              | If
@@ -155,7 +191,12 @@ Statement = (Return
              | Null
              | Label
              | Goto
-             | Compound)
+             | Compound
+             | Break
+             | Continue
+             | While
+             | DoWhile
+             | For)
 
 
 @dataclass
@@ -411,6 +452,80 @@ def parse_statement(t: list[lexer.Token],
                 return None
             body, index = block_result
             return Compound(body), index
+        case lexer.TkBreak():
+            index += 1
+            if expect_tk(lexer.TkSemicolon, t, index):
+                return Break(), index+1
+            return None
+        case lexer.TkContinue():
+            index += 1
+            if expect_tk(lexer.TkSemicolon, t, index):
+                return Continue(), index+1
+            return None
+        case lexer.TkWhile():
+            index += 1
+            if not expect_tk(lexer.TkOpenParenthesis, t, index):
+                return None
+            index += 1
+            cond_result = parse_expr(t, index)
+            if cond_result is None:
+                return None
+            cond, index = cond_result
+            if not expect_tk(lexer.TkCloseParenthesis, t, index):
+                return None
+            index += 1
+            stm_result = parse_statement(t, index)
+            if stm_result is None:
+                return None
+            stm, index = stm_result
+            return While(cond, stm), index
+        case lexer.TkDo():
+            index += 1
+            stm_result = parse_statement(t, index)
+            if stm_result is None:
+                return None
+            stm, index = stm_result
+            if not expect_tk(lexer.TkWhile, t, index):
+                return None
+            index += 1
+            if not expect_tk(lexer.TkOpenParenthesis, t, index):
+                return None
+            index += 1
+            cond_result = parse_expr(t, index)
+            if cond_result is None:
+                return None
+            cond, index = cond_result
+            if not expect_tk(lexer.TkCloseParenthesis, t, index):
+                return None
+            index += 1
+            if not expect_tk(lexer.TkSemicolon, t, index):
+                return None
+            index += 1
+            return DoWhile(stm, cond), index
+        case lexer.TkFor():
+            index += 1
+            if not expect_tk(lexer.TkOpenParenthesis, t, index):
+                return None
+            index += 1
+            for_init_result = parse_for_init(t, index)
+            if for_init_result is None:
+                return None
+            for_init, index = for_init_result
+            c_result = parse_expr(t, index)
+            for_cond, index = (None, index) if c_result is None else c_result
+            if not expect_tk(lexer.TkSemicolon, t, index):
+                return None
+            index += 1
+            post_result = parse_expr(t, index)
+            post, index = (None, index) if post_result is None else post_result
+            if not expect_tk(lexer.TkCloseParenthesis, t, index):
+                return None
+            index += 1
+            stm_result = parse_statement(t, index)
+            if stm_result is None:
+                return None
+            stm, index = stm_result
+            return For(for_init, for_cond, post, stm), index
         case _:
             return parse_exprNode(t, index)
 
@@ -438,6 +553,23 @@ def parse_declaration(t: list[lexer.Token],
             return DeclareNode(id, exp), index+1
         case _:
             return None
+
+
+def parse_for_init(t: list[lexer.Token],
+                   index: int) -> tuple[ForInit, int] | None:
+    if index >= len(t):
+        return None
+    match t[index]:
+        case lexer.TkInt():
+            return parse_declaration(t, index)
+        case _:
+            print('no int found')
+            e_result = parse_expr(t, index)
+            expr, index = (None, index) if e_result is None else e_result
+            if not expect_tk(lexer.TkSemicolon, t, index):
+                return None
+            print('Got semicolon')
+            return expr, index+1
 
 
 def parse_block_item(t: list[lexer.Token],

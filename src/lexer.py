@@ -259,6 +259,31 @@ class TkGoto:
     pass
 
 
+@dataclass
+class TkDo:
+    pass
+
+
+@dataclass
+class TkWhile:
+    pass
+
+
+@dataclass
+class TkFor:
+    pass
+
+
+@dataclass
+class TkBreak:
+    pass
+
+
+@dataclass
+class TkContinue:
+    pass
+
+
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace
@@ -308,7 +333,12 @@ Token = (TkOpenParenthesis
          | TkQuestion
          | TkIf
          | TkElse
-         | TkGoto)
+         | TkGoto
+         | TkDo
+         | TkWhile
+         | TkFor
+         | TkBreak
+         | TkContinue)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -341,6 +371,16 @@ def parse_identity_keyword(x: str) -> tuple[Token, int]:
             return (TkElse(), token_len)
         case 'goto':
             return (TkGoto(), token_len)
+        case 'do':
+            return (TkDo(), token_len)
+        case 'while':
+            return (TkWhile(), token_len)
+        case 'for':
+            return (TkFor(), token_len)
+        case 'break':
+            return (TkBreak(), token_len)
+        case 'continue':
+            return (TkContinue(), token_len)
         case _:
             return (TkIdentifier(token_string), token_len)
 

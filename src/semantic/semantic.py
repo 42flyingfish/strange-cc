@@ -67,6 +67,19 @@ def resolve_blockItem(b: parser.Block_Item,
             raise RuntimeError('Impossible')
 
 
+def resolve_for_init(i: parser.ForInit,
+                     v: VariableMap) -> parser.ForInit:
+    match i:
+        case None:
+            return None
+        case parser.DeclareNode():
+            return resolve_declaration(i, v)
+        case _ if isinstance(i, parser.Expression):
+            return resolve_exp(i, v)
+        case _:
+            raise RuntimeError('Impossible')
+
+
 def resolve_statement(s: parser.Statement,
                       v: VariableMap) -> parser.Statement:
     match s:
@@ -97,6 +110,24 @@ def resolve_statement(s: parser.Statement,
             new_block = resolve_block(block, v)
             v.pop()
             return replace(s, block=new_block)
+        case parser.Break() | parser.Continue():
+            return s
+        case parser.While(exp, body, label):
+            new_exp = resolve_exp(exp, v)
+            new_body = resolve_statement(body, v)
+            return parser.While(new_exp, new_body, label)
+        case parser.DoWhile(body, exp, label):
+            new_body = resolve_statement(body, v)
+            new_exp = resolve_exp(exp, v)
+            return parser.DoWhile(new_body, new_exp, label)
+        case parser.For(init, mid, post, body, label):
+            v.push()
+            new_init = resolve_for_init(init, v)
+            new_mid = None if mid is None else resolve_exp(mid, v)
+            new_post = None if post is None else resolve_exp(post, v)
+            new_body = resolve_statement(body, v)
+            v.pop()
+            return parser.For(new_init, new_mid, new_post, new_body, label)
         case _:
             raise RuntimeError('Impossible')
 

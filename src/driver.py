@@ -8,7 +8,7 @@ import asm
 import code_emit
 import lexer
 import tacky
-from semantic import goto, semantic
+from semantic import goto, semantic, loops
 
 
 def handle_args():
@@ -55,6 +55,7 @@ def handle_args():
     # TODO make use of the TACKY Immediate Representation
     resolved = semantic.resolve_program(x)
     resolved = goto.resolve_program(resolved)
+    resolved = loops.resolve_program(resolved)
     if args.validate:
         return
     tacky_ast = tacky.emit_tack_program(resolved)

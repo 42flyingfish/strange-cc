@@ -324,6 +324,52 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             return Var(Identifier('Null'))
         case parser.Compound(block):
             return emit_tacky(block, instructions)
+        case parser.Break(label):
+            label = Identifier(f'break_{label}')
+            instructions.append(Jump(label))
+            return Var(Identifier('Null'))
+        case parser.Continue(label):
+            label = Identifier(f'continue_{label}')
+            instructions.append(Jump(label))
+            return Var(Identifier('Null'))
+        case parser.DoWhile(body, cond, label):
+            start_label = Identifier(f'start_{label}')
+            continue_label = Identifier(f'continue_{label}')
+            break_label = Identifier(f'break_{label}')
+            instructions.append(Label(start_label))
+            _ = emit_tacky(body, instructions)
+            instructions.append(Label(continue_label))
+            r = emit_tacky(cond, instructions)
+            instructions.extend((JumpIfNotZero(r, start_label),
+                                 Label(break_label)))
+            return Var(Identifier('Null'))
+        case parser.While(cond, body, label):
+            continue_label = Identifier(f'continue_{label}')
+            break_label = Identifier(f'break_{label}')
+            instructions.append(Label(continue_label))
+            r = emit_tacky(cond, instructions)
+            instructions.append(JumpIfZero(r, break_label))
+            _ = emit_tacky(body, instructions)
+            instructions.extend((Jump(continue_label),
+                                 Label(break_label)))
+            return Var(Identifier('Null'))
+        case parser.For(pre, mid, post, body, label):
+            start_label = Identifier(f'start_{label}')
+            continue_label = Identifier(f'continue_{label}')
+            break_label = Identifier(f'break_{label}')
+            if pre is not None:
+                _ = emit_tacky(pre, instructions)
+            instructions.append(Label(start_label))
+            if mid is not None:
+                r = emit_tacky(mid, instructions)
+                instructions.append(JumpIfZero(r, break_label))
+            _ = emit_tacky(body, instructions)
+            instructions.append(Label(continue_label))
+            if post is not None:
+                _ = emit_tacky(post, instructions)
+            instructions.extend((Jump(start_label),
+                                 Label(break_label)))
+            return Var(Identifier('Null'))
         case _:
             raise RuntimeError(f'Uhandled Expression {node}')
 

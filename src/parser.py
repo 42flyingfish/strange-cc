@@ -184,6 +184,26 @@ class For:
     label: Identifier = Identifier('')
 
 
+@dataclass
+class Case:
+    cond: Expression
+    stm: 'Statement'
+    label: Identifier = Identifier('')
+
+
+@dataclass
+class Default:
+    stm: 'Statement'
+    label: Identifier = Identifier('')
+
+
+@dataclass
+class Switch:
+    exp: Expression
+    body: 'Statement'
+    label: Identifier = Identifier('')
+
+
 Statement = (Return
              | ExpNode
              | If
@@ -196,7 +216,10 @@ Statement = (Return
              | Continue
              | While
              | DoWhile
-             | For)
+             | For
+             | Case
+             | Default
+             | Switch)
 
 
 @dataclass
@@ -526,8 +549,72 @@ def parse_statement(t: list[lexer.Token],
                 return None
             stm, index = stm_result
             return For(for_init, for_cond, post, stm), index
+        case lexer.TkSwitch():
+            return parse_switch(t, index)
+        case lexer.TkCase():
+            return parse_case(t, index)
+        case lexer.TkDefault():
+            return parse_default(t, index)
         case _:
             return parse_exprNode(t, index)
+
+
+def parse_switch(t: list[lexer.Token],
+                 index: int) -> tuple[Switch, int] | None:
+    if not expect_tk(lexer.TkSwitch, t, index):
+        return None
+    index += 1
+    print('found switch')
+    if not expect_tk(lexer.TkOpenParenthesis, t, index):
+        return None
+    index += 1
+    exp_result = parse_expr(t, index)
+    if exp_result is None:
+        return None
+    switch_exp, index = exp_result
+    if not expect_tk(lexer.TkCloseParenthesis, t, index):
+        return None
+    index += 1
+
+    stm_result = parse_statement(t, index)
+    if stm_result is None:
+        return None
+    stm, index = stm_result
+    return Switch(switch_exp, stm), index
+
+
+def parse_case(t: list[lexer.Token],
+               index: int) -> tuple[Case, int] | None:
+    if not expect_tk(lexer.TkCase, t, index):
+        return None
+    index += 1
+    exp_result = parse_expr(t, index)
+    if exp_result is None:
+        return None
+    cond, index = exp_result
+    if not expect_tk(lexer.TkColon, t, index):
+        return None
+    index += 1
+    stm_result = parse_statement(t, index)
+    if stm_result is None:
+        return None
+    stm, index = stm_result
+    return Case(cond, stm), index
+
+
+def parse_default(t: list[lexer.Token],
+                  index: int) -> tuple[Default, int] | None:
+    if not expect_tk(lexer.TkDefault, t, index):
+        return None
+    index += 1
+    if not expect_tk(lexer.TkColon, t, index):
+        return None
+    index += 1
+    stm_result = parse_statement(t, index)
+    if stm_result is None:
+        return None
+    stm, index = stm_result
+    return Default(stm), index
 
 
 def parse_declaration(t: list[lexer.Token],

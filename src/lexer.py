@@ -284,6 +284,21 @@ class TkContinue:
     pass
 
 
+@dataclass
+class TkSwitch:
+    pass
+
+
+@dataclass
+class TkCase:
+    pass
+
+
+@dataclass
+class TkDefault:
+    pass
+
+
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace
@@ -338,7 +353,10 @@ Token = (TkOpenParenthesis
          | TkWhile
          | TkFor
          | TkBreak
-         | TkContinue)
+         | TkContinue
+         | TkSwitch
+         | TkCase
+         | TkDefault)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -381,6 +399,12 @@ def parse_identity_keyword(x: str) -> tuple[Token, int]:
             return (TkBreak(), token_len)
         case 'continue':
             return (TkContinue(), token_len)
+        case 'switch':
+            return (TkSwitch(), token_len)
+        case 'case':
+            return (TkCase(), token_len)
+        case 'default':
+            return (TkDefault(), token_len)
         case _:
             return (TkIdentifier(token_string), token_len)
 

@@ -128,8 +128,21 @@ def resolve_statement(s: parser.Statement,
             new_body = resolve_statement(body, v)
             v.pop()
             return parser.For(new_init, new_mid, new_post, new_body, label)
+        case parser.Switch(exp, body, label):
+            v.push()
+            new_exp = resolve_exp(exp, v)
+            new_body = resolve_statement(body, v)
+            v.pop()
+            return parser.Switch(new_exp, new_body, label)
+        case parser.Case(cond, stm, label):
+            new_cond = resolve_exp(cond, v)
+            new_stm = resolve_statement(stm, v)
+            return parser.Case(new_cond, new_stm, label)
+        case parser.Default(stm, label):
+            new_stm = resolve_statement(stm, v)
+            return parser.Default(new_stm, label)
         case _:
-            raise RuntimeError('Impossible')
+            raise RuntimeError(f'Unknown statement passed {type(s)}')
 
 
 def resolve_exp(e: parser.Expression,

@@ -8,6 +8,7 @@ import asm
 import code_emit
 import lexer
 import tacky
+import semantic.case as lower
 from semantic import goto, semantic, loops
 
 
@@ -56,6 +57,7 @@ def handle_args():
     resolved = semantic.resolve_program(x)
     resolved = goto.resolve_program(resolved)
     resolved = loops.resolve_program(resolved)
+    resolved = lower.lower_switch(resolved)
     if args.validate:
         return
     tacky_ast = tacky.emit_tack_program(resolved)

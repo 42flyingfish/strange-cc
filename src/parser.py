@@ -6,7 +6,7 @@ import lexer
 from utility import Identifier
 
 
-@dataclass
+@dataclass(frozen=True)
 class Constant:
     val: str
 

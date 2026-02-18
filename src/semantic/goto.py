@@ -129,6 +129,15 @@ def resolve_labels_stm(n: parser.Statement,
             new_post = None if post is None else resolve_labels_exp(post, v)
             new_body = resolve_labels_stm(body, v)
             return parser.For(new_init, new_mid, new_post, new_body, label)
+        case parser.Switch(exp, body, label):
+            new_body = resolve_labels_stm(body, v)
+            return parser.Switch(exp, new_body, label)
+        case parser.Case(cond, stm, label):
+            new_stm = resolve_labels_stm(stm, v)
+            return parser.Case(cond, new_stm, label)
+        case parser.Default(stm, label):
+            new_stm = resolve_labels_stm(stm, v)
+            return parser.Default(new_stm, label)
         case _:
             raise NotImplementedError(f'Unhandled statement {n}')
 
@@ -272,6 +281,15 @@ def resolve_goto_stm(n: parser.Statement,
             new_post = None if post is None else resolve_goto_exp(post, v)
             new_body = resolve_goto_stm(body, v)
             return parser.For(new_init, new_mid, new_post, new_body, label)
+        case parser.Switch(exp, body, label):
+            new_body = resolve_goto_stm(body, v)
+            return parser.Switch(exp, new_body, label)
+        case parser.Case(cond, stm, label):
+            new_stm = resolve_goto_stm(stm, v)
+            return parser.Case(cond, new_stm, label)
+        case parser.Default(stm, label):
+            new_stm = resolve_goto_stm(stm, v)
+            return parser.Default(new_stm, label)
         case _:
             raise NotImplementedError(f'Unhandled statement {n}')
 

@@ -564,7 +564,6 @@ def parse_switch(t: list[lexer.Token],
     if not expect_tk(lexer.TkSwitch, t, index):
         return None
     index += 1
-    print('found switch')
     if not expect_tk(lexer.TkOpenParenthesis, t, index):
         return None
     index += 1
@@ -650,12 +649,10 @@ def parse_for_init(t: list[lexer.Token],
         case lexer.TkInt():
             return parse_declaration(t, index)
         case _:
-            print('no int found')
             e_result = parse_expr(t, index)
             expr, index = (None, index) if e_result is None else e_result
             if not expect_tk(lexer.TkSemicolon, t, index):
                 return None
-            print('Got semicolon')
             return expr, index+1
 
 

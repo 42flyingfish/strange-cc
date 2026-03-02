@@ -7,6 +7,8 @@ from utility import Identifier, make_temporary
 # 1 find switch
 # 2 if not in switch and case fail
 # 3 On Switch collect cases
+# 4 replace cases with labels
+# 5 replace switch with chain of if
 
 
 class CaseTable:
@@ -188,7 +190,7 @@ def on_switch_case(n: parser.Case,
     if t.empty():
         raise RuntimeError('Case found outside of switch')
     if not isinstance(n.cond, parser.Constant):
-        # TODO contant expressions like 1 + 4 are vali
+        # TODO contant expressions like 1 + 4 are valid
         # and must be supported
         raise RuntimeError('Conditions in cases must be constant')
     target = make_temporary('switch_target')

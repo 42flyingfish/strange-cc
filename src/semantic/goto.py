@@ -341,7 +341,6 @@ def resolve_program(p: parser.Program) -> parser.Program:
     var_map = VariableMap()
     # First pass collects and replaces label stms
     ast = resolve_labels_program(p, var_map)
-    var_map.print_topmost()
     # Second pass replaces and validates goto labels
     ast = resolve_goto_program(ast, var_map)
     return ast

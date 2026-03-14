@@ -226,7 +226,7 @@ def on_switch_switch(n: parser.Switch,
 
     ladder: list[parser.Block_Item] = list()
 
-    ladder.append(parser.D(parser.DeclareNode(id, n.exp)))
+    ladder.append(parser.D(parser.VarDecl(id, n.exp)))
 
     for key, value in t.top().items():
         if key == 'default':

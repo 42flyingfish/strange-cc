@@ -36,9 +36,9 @@ def resolve_declaration(d: parser.Declaration,
     unique_name = make_temporary(str(d.name))
     v.register(d.name, unique_name)
     if d.exp is None:
-        return parser.DeclareNode(unique_name, None)
+        return parser.VarDecl(unique_name, None)
     new_exp = resolve_exp(d.exp, v)
-    return parser.DeclareNode(unique_name, new_exp)
+    return parser.VarDecl(unique_name, new_exp)
 
 
 def resolve_func(f: parser.Function,
@@ -72,7 +72,7 @@ def resolve_for_init(i: parser.ForInit,
     match i:
         case None:
             return None
-        case parser.DeclareNode():
+        case parser.VarDecl():
             return resolve_declaration(i, v)
         case _ if isinstance(i, parser.Expression):
             return resolve_exp(i, v)

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Type
 
@@ -96,8 +96,14 @@ class Conditional:
     f: 'Expression'
 
 
+@dataclass
+class FunctionCall:
+    id: Identifier
+    args: list['Expression'] = field(default_factory=list)
+
+
 Expression = (Constant | Var | Unary | Binary | Assignment
-              | CompoundAssign | Postfix | Conditional)
+              | CompoundAssign | Postfix | Conditional | FunctionCall)
 
 
 @dataclass
@@ -172,7 +178,7 @@ class DoWhile:
     label: Identifier = Identifier('')
 
 
-type ForInit = 'Declaration' | Expression | None
+type ForInit = 'VarDecl' | Expression | None
 
 
 @dataclass
@@ -223,12 +229,22 @@ Statement = (Return
 
 
 @dataclass
-class DeclareNode:
+class VariableDefinition:
     name: Identifier
     exp: Expression | None = None
 
 
-type Declaration = DeclareNode
+@dataclass
+class VarDecl:
+    variable_definition: VariableDefinition
+
+
+@dataclass
+class FunDecl:
+    function_definition: 'Function'
+
+
+Declaration = VarDecl | FunDecl
 
 
 @dataclass
@@ -246,18 +262,19 @@ Block_Item = S | D
 
 @dataclass
 class Block:
-    block_items: list[Block_Item]
+    block_items: list[Block_Item] = field(default_factory=list)
 
 
 @dataclass
 class Function:
     name: Identifier
-    body: Block
+    params: list[Identifier] = field(default_factory=list)
+    body: Block | None = None
 
 
 @dataclass
 class Program:
-    function_definition: Function
+    function_definition: list['FunDecl'] = field(default_factory=list)
 
 
 def expect_tk(kind: Type,
@@ -627,7 +644,7 @@ def parse_declaration(t: list[lexer.Token],
     id, index = id_result
     match t[index]:
         case lexer.TkSemicolon():
-            return DeclareNode(id), index+1
+            return VarDecl(VariableDefinition(id)), index+1
         case lexer.TkEqual():
             index += 1
             exp_result = parse_expr(t, index)
@@ -636,7 +653,10 @@ def parse_declaration(t: list[lexer.Token],
             exp, index = exp_result
             if not expect_tk(lexer.TkSemicolon, t, index):
                 return None
-            return DeclareNode(id, exp), index+1
+            return VarDecl(VariableDefinition(id, exp)), index+1
+        case lexer.TkOpenParenthesis():
+            func_result = parse_func_decl(t, index-2)
+            return func_result
         case _:
             return None
 
@@ -647,7 +667,13 @@ def parse_for_init(t: list[lexer.Token],
         return None
     match t[index]:
         case lexer.TkInt():
-            return parse_declaration(t, index)
+            decl_r = parse_declaration(t, index)
+            if decl_r is None:
+                return None
+            decl, index = decl_r
+            if isinstance(decl, FunDecl):
+                return None
+            return decl, index
         case _:
             e_result = parse_expr(t, index)
             expr, index = (None, index) if e_result is None else e_result
@@ -700,12 +726,25 @@ def parse_factor(t: list[lexer.Token],
                     return None
                 index += 1
                 return (inner_expr, index)
-            case _:
+            case lexer.TkIdentifier():
                 id_result = parse_identifier(t, index)
                 if id_result is None:
                     return None
                 id, index = id_result
+                peek = None if index > len(t) else t[index]
+                if isinstance(peek, lexer.TkOpenParenthesis):
+                    index += 1
+                    args_r = parse_args(t, index)
+                    if args_r is None:
+                        return None
+                    args, index = args_r
+                    if not expect_tk(lexer.TkCloseParenthesis, t, index):
+                        return None
+                    index += 1
+                    return FunctionCall(id, args), index
                 return Var(id), index
+            case _:
+                return None
     result = inner(t, index)
     if result is None:
         return None
@@ -786,6 +825,28 @@ def parse_binop(t: list[lexer.Token], index: int) -> tuple[Bin_Op, int] | None:
             return Bin_Op.RS_ASSIGN, index+1
         case _:
             return None
+
+
+def parse_args(t: list[lexer.Token],
+               index: int) -> tuple[list[Expression], int] | None:
+    args: list[Expression] = list()
+
+    if expect_tk(lexer.TkCloseParenthesis, t, index):
+        return args, index
+
+    while True:
+        arg_r = parse_expr(t, index)
+        if arg_r is None:
+            return None
+        arg, index = arg_r
+        args.append(arg)
+        if expect_tk(lexer.TkCloseParenthesis, t, index):
+            break
+        if not expect_tk(lexer.TkComma, t, index):
+            return None
+        index += 1
+
+    return args, index
 
 
 def parse_cond_middle(t: list[lexer.Token],
@@ -878,39 +939,89 @@ def parse_block(t: list[lexer.Token],
     return Block(body), index+1
 
 
-def parse_function(t: list[lexer.Token],
-                   index: int) -> tuple[Function, int] | None:
+def parse_params(t: list[lexer.Token],
+                 index: int) -> tuple[list[Identifier], int] | None:
+    params: list[Identifier] = list()
+
+    # This is an incomplete helper function
+    # At the moment, it will parse func(void) or
+    # a chain of int <id>,
+    # At the current moment, the only type supported in the compiler
+    # is int and as such, this will not parse something like void *
+
+    peek = None if index > len(t) else t[index]
+    match peek:
+        case lexer.TkVoid():
+            return params, index+1
+        case lexer.TkInt():
+            while True:
+                if not expect_tk(lexer.TkInt, t, index):
+                    return None
+                index += 1
+                id_r = parse_identifier(t, index)
+                if id_r is None:
+                    return None
+                id, index = id_r
+                params.append(id)
+                # stop parsing on close parenthesis
+                if expect_tk(lexer.TkCloseParenthesis, t, index):
+                    break
+                # return failure if this isn't a comma
+                if not expect_tk(lexer.TkComma, t, index):
+                    return None
+                index += 1
+        case _:
+            return None
+
+    return params, index
+
+
+def parse_func_decl(t: list[lexer.Token],
+                    index: int) -> tuple[FunDecl, int] | None:
+
     if not expect_tk(lexer.TkInt, t, index):
         return None
     index += 1
     r_ident = parse_identifier(t, index)
-    if (r_ident is None):
+    if r_ident is None:
         return None
-    index = r_ident[1]
-
-    TK_CHUNK = (lexer.TkOpenParenthesis,
-                lexer.TkVoid,
-                lexer.TkCloseParenthesis)
-
-    for kind in TK_CHUNK:
-        if not expect_tk(kind, t, index):
+    func_ident, index = r_ident
+    if not expect_tk(lexer.TkOpenParenthesis, t, index):
+        return None
+    index += 1
+    r_params = parse_params(t, index)
+    if r_params is None:
+        return None
+    func_params, index = r_params
+    if not expect_tk(lexer.TkCloseParenthesis, t, index):
+        return None
+    index += 1
+    peek = None if index > len(t) else t[index]
+    match peek:
+        case lexer.TkSemicolon():
+            return FunDecl(Function(func_ident, func_params, None)), index+1
+        case lexer.TkOpenBrace():
+            body_result = parse_block(t, index)
+            if body_result is None:
+                return None
+            body, index = body_result
+            return FunDecl(Function(func_ident, func_params, body)), index
+        case _:
             return None
-        else:
-            index += 1
-
-    body_result = parse_block(t, index)
-    if body_result is None:
-        return None
-    body, index = body_result
-    return (Function(r_ident[0], body), index)
 
 
 def parse_program(t: list[lexer.Token],
                   index: int) -> Program | None:
-    ret = parse_function(t, index)
-    if (ret is None):
+
+    funcs: list[FunDecl] = list()
+    while (func_result := parse_func_decl(t, index)) is not None:
+        func, index = func_result
+        funcs.append(func)
+
+    if not funcs:
         return None
-    func, num = ret
-    if num < len(t):
+
+    if index < len(t):
         return None
-    return Program(func)
+
+    return Program(funcs)

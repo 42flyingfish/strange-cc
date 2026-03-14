@@ -71,7 +71,7 @@ def resolve_labels_for_init(i: parser.ForInit,
     match i:
         case None:
             return None
-        case parser.DeclareNode():
+        case parser.VarDecl():
             return resolve_labels_decl(i, v)
         case _ if isinstance(i, parser.Expression):
             return resolve_labels_exp(i, v)
@@ -176,8 +176,8 @@ def resolve_labels_exp(n: parser.Expression,
             raise NotImplementedError(f'Unhandled exp {n}')
 
 
-def resolve_labels_decl(n: parser.DeclareNode,
-                        v: VariableMap) -> parser.DeclareNode:
+def resolve_labels_decl(n: parser.VarDecl,
+                        v: VariableMap) -> parser.VarDecl:
     if n.exp is None:
         return n
     tmp_exp = cast(parser.Expression, n.exp)
@@ -224,7 +224,7 @@ def resolve_goto_for_init(i: parser.ForInit,
     match i:
         case None:
             return None
-        case parser.DeclareNode():
+        case parser.VarDecl():
             return resolve_goto_decl(i, v)
         case _ if isinstance(i, parser.Expression):
             return resolve_goto_exp(i, v)
@@ -328,8 +328,8 @@ def resolve_goto_exp(n: parser.Expression,
             raise NotImplementedError(f'Unhandled exp {n}')
 
 
-def resolve_goto_decl(n: parser.DeclareNode,
-                      v: VariableMap) -> parser.DeclareNode:
+def resolve_goto_decl(n: parser.VarDecl,
+                      v: VariableMap) -> parser.VarDecl:
     if n.exp is None:
         return n
     tmp_exp = cast(parser.Expression, n.exp)

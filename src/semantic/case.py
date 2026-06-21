@@ -50,8 +50,8 @@ def on_switch(n, *args, **kwargs):
 def on_switch_prog(n: parser.Program,
                    t: CaseTable,
                    l: bool) -> parser.Program:
-    func = on_switch(n.function_definition, t, l)
-    return replace(n, function_definition=func)
+    funcs = [on_switch(f, t, l) for f in n.function_definition]
+    return replace(n, function_definition=funcs)
 
 
 @on_switch.register
@@ -131,6 +131,21 @@ def on_switch_goto(n: parser.Goto,
                    t: CaseTable,
                    l: bool) -> parser.Goto:
     return n
+
+
+@on_switch.register
+def on_switch_fundecl(n: parser.FunDecl,
+                      t: CaseTable,
+                      l: bool) -> parser.FunDecl:
+    func = on_switch(n.function_definition, t, l)
+    return replace(n, function_definition=func)
+
+
+@on_switch.register
+def on_switch_none(n: None,
+                   t: CaseTable,
+                   l: bool) -> None:
+    return None
 
 
 @on_switch.register

@@ -37,13 +37,21 @@ class VariableMap:
 
 def resolve_labels_program(n: parser.Program,
                            v: VariableMap) -> parser.Program:
-    func_node = resolve_labels_func(n.function_definition, v)
-    return replace(n, function_definition=func_node)
+    func_list: list[parser.FunDecl] = list()
+    for x in n.function_definition:
+        func_list.append(resolve_labels_fun_decl(x, v))
+    return replace(n, function_definition=func_list)
+
+
+def resolve_labels_fun_decl(n: parser.FunDecl,
+                            v: VariableMap) -> parser.FunDecl:
+    new_func = resolve_labels_func(n.function_definition, v)
+    return replace(n, function_definition=new_func)
 
 
 def resolve_labels_func(n: parser.Function,
                         v: VariableMap) -> parser.Function:
-    new_body = resolve_labels_block(n.body, v)
+    new_body = None if n.body is None else resolve_labels_block(n.body, v)
     return replace(n, body=new_body)
 
 
@@ -59,8 +67,10 @@ def resolve_labels_block_items(n: parser.Block_Item,
         case parser.S(statement):
             stm = resolve_labels_stm(statement, v)
             return replace(n, statement=stm)
-        case parser.D(declare):
-            decl = resolve_labels_decl(declare, v)
+        case parser.D(declaration):
+            # Hazy on this as a block is a union
+            # and not a container like D and S
+            decl = resolve_labels_decl(declaration, v)
             return replace(n, declaration=decl)
         case _:
             raise RuntimeError(f'impossible {n}')
@@ -72,7 +82,11 @@ def resolve_labels_for_init(i: parser.ForInit,
         case None:
             return None
         case parser.VarDecl():
-            return resolve_labels_decl(i, v)
+            thing = resolve_labels_decl(i, v)
+            if isinstance(thing, parser.VarDecl):
+                return thing
+            else:
+                raise RuntimeError('This should be impossible')
         case _ if isinstance(i, parser.Expression):
             return resolve_labels_exp(i, v)
         case _:
@@ -172,12 +186,27 @@ def resolve_labels_exp(n: parser.Expression,
             new_t = resolve_labels_exp(t, v)
             new_f = resolve_labels_exp(f, v)
             return replace(n, condition=new_cond, t=new_t, f=new_f)
+        case parser.FunctionCall(_, args):
+            new_args = [resolve_labels_exp(arg, v) for arg in args]
+            return replace(n, args=new_args)
         case _:
             raise NotImplementedError(f'Unhandled exp {n}')
 
 
-def resolve_labels_decl(n: parser.VarDecl,
-                        v: VariableMap) -> parser.VarDecl:
+def resolve_labels_decl(n: parser.Declaration,
+                        v: VariableMap) -> parser.Declaration:
+    match n:
+        case parser.VarDecl(var_def):
+            new_var_def = resolve_labels_var_def(var_def, v)
+            return parser.VarDecl(new_var_def)
+        case parser.FunDecl():
+            return resolve_labels_fun_decl(n, v)
+        case _:
+            raise NotImplementedError(f'Unhandled decl {n}')
+
+
+def resolve_labels_var_def(n: parser.VariableDefinition,
+                           v: VariableMap) -> parser.VariableDefinition:
     if n.exp is None:
         return n
     tmp_exp = cast(parser.Expression, n.exp)
@@ -190,14 +219,22 @@ def resolve_labels_decl(n: parser.VarDecl,
 
 def resolve_goto_program(n: parser.Program,
                          v: VariableMap) -> parser.Program:
-    func_node = resolve_goto_func(n.function_definition, v)
-    return replace(n, function_definition=func_node)
+    func_list: list[parser.FunDecl] = list()
+    for x in n.function_definition:
+        func_list.append(resolve_goto_fun_decl(x, v))
+    return replace(n, function_definition=func_list)
+
+
+def resolve_goto_fun_decl(n: parser.FunDecl,
+                          v: VariableMap) -> parser.FunDecl:
+    new_func = resolve_goto_func(n.function_definition, v)
+    return replace(n, function_definition=new_func)
 
 
 def resolve_goto_func(n: parser.Function,
                       v: VariableMap) -> parser.Function:
-    body = resolve_goto_block(n.body, v)
-    return replace(n, body=body)
+    new_body = None if n.body is None else resolve_goto_block(n.body, v)
+    return replace(n, body=new_body)
 
 
 def resolve_goto_block(n: parser.Block,
@@ -212,8 +249,10 @@ def resolve_goto_block_items(n: parser.Block_Item,
         case parser.S(statement):
             stm = resolve_goto_stm(statement, v)
             return replace(n, statement=stm)
-        case parser.D(declare):
-            decl = resolve_goto_decl(declare, v)
+        case parser.D(declaration):
+            # Hazy on this as a block is a union
+            # and not a container like D and S
+            decl = resolve_goto_decl(declaration, v)
             return replace(n, declaration=decl)
         case _:
             raise RuntimeError(f'impossible {n}')
@@ -225,7 +264,11 @@ def resolve_goto_for_init(i: parser.ForInit,
         case None:
             return None
         case parser.VarDecl():
-            return resolve_goto_decl(i, v)
+            thing = resolve_goto_decl(i, v)
+            if isinstance(thing, parser.VarDecl):
+                return thing
+            else:
+                raise RuntimeError('This should be impossible')
         case _ if isinstance(i, parser.Expression):
             return resolve_goto_exp(i, v)
         case _:
@@ -324,12 +367,27 @@ def resolve_goto_exp(n: parser.Expression,
             new_t = resolve_goto_exp(t, v)
             new_f = resolve_goto_exp(f, v)
             return replace(n, condition=new_cond, t=new_t, f=new_f)
+        case parser.FunctionCall(_, args):
+            new_args = [resolve_labels_exp(arg, v) for arg in args]
+            return replace(n, args=new_args)
         case _:
             raise NotImplementedError(f'Unhandled exp {n}')
 
 
-def resolve_goto_decl(n: parser.VarDecl,
-                      v: VariableMap) -> parser.VarDecl:
+def resolve_goto_decl(n: parser.Declaration,
+                      v: VariableMap) -> parser.Declaration:
+    match n:
+        case parser.VarDecl(var_def):
+            new_var_def = resolve_goto_var_def(var_def, v)
+            return parser.VarDecl(new_var_def)
+        case parser.FunDecl():
+            return resolve_goto_fun_decl(n, v)
+        case _:
+            raise NotImplementedError(f'Unhandled decl {n}')
+
+
+def resolve_goto_var_def(n: parser.VariableDefinition,
+                         v: VariableMap) -> parser.VariableDefinition:
     if n.exp is None:
         return n
     tmp_exp = cast(parser.Expression, n.exp)

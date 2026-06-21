@@ -16,8 +16,9 @@ def label_loop(n,
 def label_loop_program(n: parser.Program,
                        current_label: Identifier | None,
                        s: bool) -> parser.Program:
-    func_node = label_loop(n.function_definition, current_label, s)
-    return replace(n, function_definition=func_node)
+    func_nodes = [label_loop(f, current_label, s)
+                  for f in n.function_definition]
+    return replace(n, function_definition=func_nodes)
 
 
 @label_loop.register
@@ -109,6 +110,21 @@ def label_loop_goto(n: parser.Goto,
                     current_label: Identifier | None,
                     s: bool) -> parser.Goto:
     return n
+
+
+@label_loop.register
+def lablel_loop_funcall(n: parser.FunctionCall,
+                        current_label: Identifier | None,
+                        s: bool) -> parser.FunctionCall:
+    return n
+
+
+@label_loop.register
+def lablel_loop_fundecl(n: parser.FunDecl,
+                        current_label: Identifier | None,
+                        s: bool) -> parser.FunDecl:
+    func = label_loop(n.function_definition, current_label, s)
+    return replace(n, function_definition=func)
 
 
 @label_loop.register

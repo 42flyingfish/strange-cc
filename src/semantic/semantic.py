@@ -1,12 +1,19 @@
 import parser
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from utility import Identifier, make_temporary
 
-ScopeStack = list[dict[Identifier, Identifier]]
+
+@dataclass
+class Id_Entry():
+    name: Identifier
+    has_linkage: bool = False
 
 
-class VariableMap:
+ScopeStack = list[dict[Identifier, Id_Entry]]
+
+
+class IdentifierMap:
     def __init__(self) -> None:
         self.scope: ScopeStack = [dict()]
 
@@ -16,46 +23,93 @@ class VariableMap:
     def pop(self) -> None:
         self.scope.pop()
 
-    def check_in_scope(self, val: Identifier) -> bool:
+    def check_in_block(self, val: Identifier) -> bool:
         return val in self.scope[-1].keys()
 
-    def lookup(self, val: Identifier) -> Identifier | None:
+    def lookup(self, val: Identifier) -> Id_Entry | None:
         for x in reversed(self.scope):
             if val in x.keys():
                 return x[val]
         return None
 
-    def register(self, key: Identifier, val: Identifier) -> None:
-        self.scope[-1][key] = val
+    def register(self, key: Identifier,
+                 val: Identifier, linkage: bool) -> None:
+        self.scope[-1][key] = Id_Entry(val, linkage)
 
 
 def resolve_declaration(d: parser.Declaration,
-                        v: VariableMap) -> parser.Declaration:
-    if v.check_in_scope(d.name):
-        raise RuntimeError(f'Duplicate variable detected: {d.name}')
-    unique_name = make_temporary(str(d.name))
-    v.register(d.name, unique_name)
-    if d.exp is None:
-        return parser.VarDecl(unique_name, None)
-    new_exp = resolve_exp(d.exp, v)
-    return parser.VarDecl(unique_name, new_exp)
+                        v: IdentifierMap) -> parser.Declaration:
+    match d:
+        case parser.VarDecl(v_def):
+            if v.check_in_block(v_def.name):
+                raise RuntimeError(f'Duplicate var detected: {v_def.name}')
+            unique_name = make_temporary(str(v_def.name))
+            # For now assuming that Vars never have external linkage
+            # This will be False in the future
+            v.register(v_def.name, unique_name, False)
+            if v_def.exp is None:
+                return parser.VarDecl(
+                    parser.VariableDefinition(unique_name, None))
+            new_exp = resolve_exp(v_def.exp, v)
+            return parser.VarDecl(
+                parser.VariableDefinition(unique_name, new_exp))
+        case parser.FunDecl():
+            # Notice that we are calling the special local variant
+            return resolve_func_local_decl(d, v)
+        case _:
+            raise RuntimeError()
+
+
+def resolve_func_decl(d: parser.FunDecl,
+                      v: IdentifierMap) -> parser.FunDecl:
+    fun_def = d.function_definition
+    if (lookup := v.lookup(fun_def.name)) is not None:
+        if v.check_in_block(fun_def.name) and not lookup.has_linkage:
+            raise RuntimeError('Duplicate function')
+    v.register(fun_def.name, fun_def.name, True)
+    v.push()
+    new_params: list[Identifier] = list()
+    for x in fun_def.params:
+        new_params.append(resolve_param(x, v))
+    new_body = None if fun_def.body is None else resolve_block(fun_def.body, v)
+    v.pop()
+    return parser.FunDecl(parser.Function(fun_def.name, new_params, new_body))
+
+
+# This is for locally declared functions
+def resolve_func_local_decl(d: parser.FunDecl,
+                            v: IdentifierMap) -> parser.FunDecl:
+    if d.function_definition.body is not None:
+        raise RuntimeError('Nested function not allowed')
+    return resolve_func_decl(d, v)
+
+
+def resolve_param(i: Identifier,
+                  v: IdentifierMap) -> Identifier:
+    if v.check_in_block(i):
+        raise RuntimeError(f'Duplicate identifier in func: {i}')
+    unique_name = make_temporary(str(i))
+    v.register(i, unique_name, False)
+    return Identifier(unique_name)
 
 
 def resolve_func(f: parser.Function,
-                 v: VariableMap) -> parser.Function:
+                 v: IdentifierMap) -> parser.Function:
     """ Resolves the function contents but not the function as of yet"""
+    if f.body is None:
+        return f
     items = resolve_block(f.body, v)
     return replace(f, body=items)
 
 
 def resolve_block(b: parser.Block,
-                  v: VariableMap) -> parser.Block:
+                  v: IdentifierMap) -> parser.Block:
     items = [resolve_blockItem(x, v) for x in b.block_items]
     return replace(b, block_items=items)
 
 
 def resolve_blockItem(b: parser.Block_Item,
-                      v: VariableMap) -> parser.Block_Item:
+                      v: IdentifierMap) -> parser.Block_Item:
     match b:
         case parser.S(statement):
             stmt = resolve_statement(statement, v)
@@ -68,12 +122,17 @@ def resolve_blockItem(b: parser.Block_Item,
 
 
 def resolve_for_init(i: parser.ForInit,
-                     v: VariableMap) -> parser.ForInit:
+                     v: IdentifierMap) -> parser.ForInit:
     match i:
         case None:
             return None
         case parser.VarDecl():
-            return resolve_declaration(i, v)
+            # ugly type coupling
+            new_decl = resolve_declaration(i, v)
+            if isinstance(new_decl, parser.VarDecl):
+                return new_decl
+            else:
+                raise RuntimeError('Impossible')
         case _ if isinstance(i, parser.Expression):
             return resolve_exp(i, v)
         case _:
@@ -81,7 +140,7 @@ def resolve_for_init(i: parser.ForInit,
 
 
 def resolve_statement(s: parser.Statement,
-                      v: VariableMap) -> parser.Statement:
+                      v: IdentifierMap) -> parser.Statement:
     match s:
         case parser.Null():
             return s
@@ -146,7 +205,7 @@ def resolve_statement(s: parser.Statement,
 
 
 def resolve_exp(e: parser.Expression,
-                v: VariableMap) -> parser.Expression:
+                v: IdentifierMap) -> parser.Expression:
     match e:
         case parser.Constant():
             return e
@@ -166,7 +225,7 @@ def resolve_exp(e: parser.Expression,
             unique_id = v.lookup(id)
             if unique_id is None:
                 raise RuntimeError(f'Id {id} is not in scope')
-            return parser.Var(unique_id)
+            return parser.Var(unique_id.name)
         case parser.Unary(up, exp):
             PREFIX = {parser.Unary_Operator.INCREMENT,
                       parser.Unary_Operator.DECREMENT}
@@ -188,11 +247,19 @@ def resolve_exp(e: parser.Expression,
             new_t = resolve_exp(t, v)
             new_f = resolve_exp(f, v)
             return parser.Conditional(new_cond, new_t, new_f)
+        case parser.FunctionCall(id, args):
+            if (new_func_name := v.lookup(id)) is not None:
+                new_args = [resolve_exp(x, v) for x in args]
+                return replace(e, id=new_func_name.name, args=new_args)
+            raise RuntimeError(f'id {id} is undeclared function')
         case _:
             raise RuntimeError(f'Impossible {e}')
 
 
 def resolve_program(p: parser.Program) -> parser.Program:
-    var_map = VariableMap()
-    func = resolve_func(p.function_definition, var_map)
-    return parser.Program(func)
+    var_map = IdentifierMap()
+    new_func_list: list[parser.FunDecl] = list()
+    for x in p.function_definition:
+        new_func = resolve_func_decl(x, var_map)
+        new_func_list.append(new_func)
+    return parser.Program(new_func_list)

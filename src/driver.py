@@ -7,9 +7,9 @@ import subprocess
 import asm
 import code_emit
 import lexer
-import tacky
 import semantic.case as lower
-from semantic import goto, semantic, loops
+import tacky
+from semantic import goto, loops, semantic
 
 
 def handle_args():

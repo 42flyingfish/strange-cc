@@ -246,7 +246,7 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             bop2 = table[bop]
             return emit_tacky(parser.Assignment(l, parser.Binary(bop2, l, r)),
                               instructions)
-        case parser.DeclareNode(name, init):
+        case parser.VarDecl(name, init):
             if init is None:
                 # This should be discarded
                 return Var(name)

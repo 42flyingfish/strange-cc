@@ -9,7 +9,7 @@ import code_emit
 import lexer
 import semantic.case as lower
 import tacky
-from semantic import goto, loops, semantic
+from semantic import goto, loops, semantic, typechecker
 
 
 def handle_args():
@@ -55,6 +55,7 @@ def handle_args():
         return
     # TODO make use of the TACKY Immediate Representation
     resolved = semantic.resolve_program(x)
+    typechecker.typecheck_program(resolved)
     resolved = goto.resolve_program(resolved)
     resolved = loops.resolve_program(resolved)
     resolved = lower.lower_switch(resolved)

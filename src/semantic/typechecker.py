@@ -1,6 +1,6 @@
 import parser
 from dataclasses import dataclass
-from typing import cast, get_args
+from typing import cast
 
 from utility import Identifier
 
@@ -49,7 +49,6 @@ def typecheck_program(n: parser.Program) -> None:
 
 def typecheck_fun_decl(n: parser.FunDecl,
                        s: SymbolTable) -> None:
-    print(f'Declaring function {n}')
     fun_type = FunType(len(n.function_definition.params))
     has_body = n.function_definition.body is not None
     already_defined = False
@@ -98,7 +97,6 @@ def typecheck_block(n: parser.Block,
 
 def typecheck_var_decl(n: parser.VariableDefinition,
                        s: SymbolTable) -> None:
-    print(f'This is a var decl {n}')
     s.add(n.name, IntType())
     if n.exp is not None:
         typecheck_exp(n.exp, s)

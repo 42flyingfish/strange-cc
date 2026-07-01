@@ -1,5 +1,5 @@
 import parser
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from utility import Identifier, make_temporary
@@ -92,6 +92,13 @@ class Label:
     identifier: Identifier
 
 
+@dataclass
+class FunCall:
+    fun_name: Identifier
+    dst: Val
+    args: list[Val] = field(default_factory=list)
+
+
 Instruction = (Return
                | Unary
                | Binary
@@ -99,18 +106,20 @@ Instruction = (Return
                | Jump
                | JumpIfZero
                | JumpIfNotZero
-               | Label)
+               | Label
+               | FunCall)
 
 
 @dataclass
 class Function:
     identifier: Identifier
-    body: list[Instruction]
+    params: list[Identifier] = field(default_factory=list)
+    body: list[Instruction] = field(default_factory=list)
 
 
 @dataclass
 class Program:
-    function_definition: Function
+    function_definition: list[Function] = field(default_factory=list)
 
 
 Tacky = Val | Instruction | Function | Program
@@ -246,7 +255,9 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             bop2 = table[bop]
             return emit_tacky(parser.Assignment(l, parser.Binary(bop2, l, r)),
                               instructions)
-        case parser.VarDecl(name, init):
+        case parser.VarDecl(v):
+            return emit_tacky(v, instructions)
+        case parser.VariableDefinition(name, init):
             if init is None:
                 # This should be discarded
                 return Var(name)
@@ -370,26 +381,33 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             instructions.extend((Jump(start_label),
                                  Label(break_label)))
             return Var(Identifier('Null'))
+        case parser.FunctionCall(id, args):
+            things = [emit_tacky(x, instructions) for x in args]
+            dst_name = make_temporary(f'{id}.call')
+            dst = Var(dst_name)
+            instructions.append(FunCall(id, dst, things))
+            return dst
+        case parser.FunDecl():
+            # we are discarding internal func declarations
+            return Var('Null')
         case _:
             raise RuntimeError(f'Uhandled Expression {node}')
 
 
 def emit_tacky_function(node: parser.Function) -> Function:
-    match node:
-        case parser.Function(name, body):
-            arr: list[Instruction] = []
-            emit_tacky(body, arr)
-            # To handle functions without returns
-            # Append this extra return 0
-            arr.append(Return(Constant(0)))
-            return Function(name, arr)
-        case _:
-            raise RuntimeError(f'Non function node passed {node}')
+    arr: list[Instruction] = []
+    _ = emit_tacky(node.body, arr)
+    # To handle functions without returns
+    # Append this extra return 0
+    arr.append(Return(Constant(0)))
+    return Function(node.name, node.params, arr)
 
 
 def emit_tack_program(node: parser.Program) -> Program:
-    match node:
-        case parser.Program(func):
-            return Program(emit_tacky_function(func))
-        case _:
-            raise RuntimeError(f'Non program node passed {node}')
+    funcs = []
+    for fun_decl in node.function_definition:
+        # We will drop null-bodied declaractions
+        if fun_decl.function_definition.body is None:
+            continue
+        funcs.append(emit_tacky_function(fun_decl.function_definition))
+    return Program(funcs)

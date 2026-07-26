@@ -389,7 +389,7 @@ def emit_tacky(node, instructions: list[Instruction]) -> Val:
             return dst
         case parser.FunDecl():
             # we are discarding internal func declarations
-            return Var('Null')
+            return Var(Identifier('Null'))
         case _:
             raise RuntimeError(f'Uhandled Expression {node}')
 

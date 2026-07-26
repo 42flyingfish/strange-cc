@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 import tacky
@@ -19,6 +19,10 @@ class Register_Enum(Enum):
     AX = auto()
     CX = auto()
     DX = auto()
+    DI = auto()
+    SI = auto()
+    R8 = auto()
+    R9 = auto()
     R10 = auto()
     R11 = auto()
 
@@ -140,6 +144,21 @@ class Label:
     identifier: Identifier
 
 
+@dataclass
+class DeallocateStack():
+    val: int
+
+
+@dataclass
+class Push():
+    operand: Operand
+
+
+@dataclass
+class Call():
+    identifier: Identifier
+
+
 Instruction = (Mov
                | Allocate_Stack
                | Unary
@@ -151,18 +170,21 @@ Instruction = (Mov
                | Jmp
                | JmpCC
                | SetCC
-               | Label)
+               | Label
+               | DeallocateStack
+               | Push
+               | Call)
 
 
 @dataclass
 class Function():
     name: str
-    instructions: list[Instruction]
+    instructions: list[Instruction] = field(default_factory=list)
 
 
 @dataclass
 class Program():
-    function_definition: Function
+    function_definition: list[Function] = field(default_factory=list)
 
 
 def convert_tacky_val(node: tacky.Val) -> Imm | Pseudo:
@@ -287,25 +309,90 @@ def convert_tacky_instr(node: tacky.Instruction) -> tuple[Instruction, ...]:
             return (Mov(Size.L, asm_src, asm_dst),)
         case tacky.Label(identifier):
             return (Label(identifier),)
+        case tacky.FunCall():
+            return convert_tacky_func_call(node)
         case _:
             raise RuntimeError(f'Unhandled Instruction {node}')
 
 
 def convert_tacky_function(node: tacky.Function) -> Function:
-    match node:
-        case tacky.Function(name, instr):
-            asm_instr = [x for y in instr for x in convert_tacky_instr(y)]
-            return Function(name, asm_instr)
-        case _:
-            raise RuntimeError(f'Unhandled node {node}')
+    ARG_REGISTERS = (Register_Enum.DI,
+                     Register_Enum.SI,
+                     Register_Enum.DX,
+                     Register_Enum.CX,
+                     Register_Enum.R8,
+                     Register_Enum.R9)
+    register_args, stack_args = node.params[:6], node.params[6:]
+
+    asm_instr: list[Instruction] = list()
+
+    for param, reg in zip(register_args, ARG_REGISTERS):
+        assembly_param = Pseudo(param)
+        asm_instr.append(Mov(Size.L, Register(reg), assembly_param))
+
+    for i, param in enumerate(stack_args):
+        assembly_param = Pseudo(param)
+        asm_instr.append(Mov(Size.L, Stack(i*8+8), assembly_param))
+
+    asm_instr.extend([x for y in node.body for x in convert_tacky_instr(y)])
+    return Function(node.identifier, asm_instr)
 
 
-def convert_tacky(node) -> Program:
-    match node:
-        case tacky.Program(func):
-            return Program(convert_tacky_function(func))
-        case _:
-            raise RuntimeError(f'Unhandled node {node}')
+def convert_tacky_func_call(node: tacky.FunCall) -> tuple[Instruction, ...]:
+    # TODO convert this to a generator
+    instructions: list[Instruction] = list()
+    ARG_REGISTERS = (Register_Enum.DI,
+                     Register_Enum.SI,
+                     Register_Enum.DX,
+                     Register_Enum.CX,
+                     Register_Enum.R8,
+                     Register_Enum.R9)
+
+    # Adjust stack padding
+    register_args, stack_args = node.args[:6], node.args[6:]
+    stack_padding = 0 if len(stack_args) % 2 == 0 else 8
+
+    if stack_padding != 0:
+        instructions.append(Allocate_Stack(stack_padding))
+
+    for arg, reg in zip(register_args, ARG_REGISTERS):
+        assembly_arg = convert_tacky_val(arg)
+        instructions.append(Mov(Size.L, assembly_arg, Register(reg)))
+
+    for tacky_arg in reversed(stack_args):
+        assembly_arg = convert_tacky_val(arg)
+        match assembly_arg:
+            # strangely, at the time of writing.
+            # convert_tacky_val will never return Register()
+            # I might have missed something
+            # default case is for in memory yet Pseudo is possible
+            # in my current implementation and maybe shouldn't
+            # Ref Sandler pg 198 listing 9-31
+            case Register() | Imm():
+                instructions.append(Push(assembly_arg))
+            case _:
+                instructions.extend((Mov(Size.L,
+                                         assembly_arg,
+                                         Register(Register_Enum.AX)),
+                                     Push(Register(Register_Enum.AX))))
+
+    instructions.append(Call(node.fun_name))
+
+    bytes_to_remove = 8 * len(stack_args) + stack_padding
+    if bytes_to_remove != 0:
+        instructions.append(DeallocateStack(bytes_to_remove))
+
+    # Grab return value
+    assembly_dst = convert_tacky_val(node.dst)
+    instructions.append(Mov(Size.L, Register(Register_Enum.AX), assembly_dst))
+
+    return tuple(instructions)
+
+
+def convert_tacky(node: tacky.Program) -> Program:
+    return Program(
+        [convert_tacky_function(f) for f in node.function_definition]
+                   )
 
 
 def replace_psuedo(func: Function) -> int:

@@ -444,6 +444,9 @@ def replace_psuedo(func: Function) -> int:
             case SetCC(cond_code, operand):
                 new_operand = replace_operand(operand)
                 modified_instr.append(SetCC(cond_code, new_operand))
+            case Push(operand):
+                new_operand = replace_operand(operand)
+                modified_instr.append(Push(new_operand))
             case _:
                 modified_instr.append(instr)
 
@@ -518,6 +521,8 @@ def instruction_fixup(func: Function, alloc_count: int) -> None:
                 scratch = Register(Register_Enum.R10)
                 modified_instr.append(Mov(size, Imm(a), scratch))
                 modified_instr.append(Idiv(size, scratch))
+            case Push():
+                return instr
             case _:
                 modified_instr.append(instr)
     func.instructions = modified_instr
@@ -525,6 +530,10 @@ def instruction_fixup(func: Function, alloc_count: int) -> None:
 
 def emit_asm_ast(node: tacky.Program) -> Program:
     asm_ast = convert_tacky(node)
-    blah = replace_psuedo(asm_ast.function_definition)
-    instruction_fixup(asm_ast.function_definition, blah)
-    return asm_ast
+
+    patched_ast = Program()
+    for f in asm_ast.function_definition:
+        blah = replace_psuedo(f)
+        instruction_fixup(f, blah)
+        patched_ast.function_definition.append(f)
+    return patched_ast

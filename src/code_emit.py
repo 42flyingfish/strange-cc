@@ -17,6 +17,35 @@ def decode_suffix(x: asm.Size) -> str:
             raise RuntimeError(f'Unhandled size{x}')
 
 
+def decode_64_operand(x) -> str:
+    match x:
+        case asm.Imm(val):
+            return f'${val}'
+        case asm.Register(asm.Register_Enum.AX):
+            return '%rax'
+        case asm.Register(asm.Register_Enum.CX):
+            return '%rcx'
+        case asm.Register(asm.Register_Enum.DX):
+            return '%rdx'
+        case asm.Register(asm.Register_Enum.DI):
+            return '%rdi'
+        case asm.Register(asm.Register_Enum.SI):
+            return '%rsi'
+        case asm.Register(asm.Register_Enum.R8):
+            return '%r8'
+        case asm.Register(asm.Register_Enum.R9):
+            return '%r9'
+        case asm.Register(asm.Register_Enum.R10):
+            return '%r10'
+        case asm.Register(asm.Register_Enum.R11):
+            return '%r11'
+        case asm.Stack(offset):
+            offset = -offset
+            return f'{offset}(%rbp)'
+        case _:
+            raise RuntimeError(f'Unhandled op {x}')
+
+
 def decode_32_operand(x) -> str:
     match x:
         case asm.Imm(val):
@@ -27,6 +56,14 @@ def decode_32_operand(x) -> str:
             return '%ecx'
         case asm.Register(asm.Register_Enum.DX):
             return '%edx'
+        case asm.Register(asm.Register_Enum.DI):
+            return '%edi'
+        case asm.Register(asm.Register_Enum.SI):
+            return '%esi'
+        case asm.Register(asm.Register_Enum.R8):
+            return '%r8d'
+        case asm.Register(asm.Register_Enum.R9):
+            return '%r9d'
         case asm.Register(asm.Register_Enum.R10):
             return '%r10d'
         case asm.Register(asm.Register_Enum.R11):
@@ -47,6 +84,14 @@ def decode_8_operand(x) -> str:
             return '%cl'
         case asm.Register(asm.Register_Enum.DX):
             return '%dl'
+        case asm.Register(asm.Register_Enum.DI):
+            return '%dil'
+        case asm.Register(asm.Register_Enum.SI):
+            return '%sil'
+        case asm.Register(asm.Register_Enum.R8):
+            return '%r8b'
+        case asm.Register(asm.Register_Enum.R9):
+            return '%r9b'
         case asm.Register(asm.Register_Enum.R10):
             return '%r10b'
         case asm.Register(asm.Register_Enum.R11):
@@ -89,6 +134,8 @@ def decode_operand(op: asm.Operand, size: asm.Size) -> str:
             return decode_8_operand(op)
         case asm.Size.L:
             return decode_32_operand(op)
+        case asm.Size.Q:
+            return decode_64_operand(op)
         case _:
             raise RuntimeError(f'Unhandled size {size}')
 
@@ -113,8 +160,9 @@ def decode_cond_code(x: asm.Cond_Code) -> str:
 
 def process_node(x) -> Generator[str]:
     match x:
-        case asm.Program():
-            yield from process_node(x.function_definition)
+        case asm.Program(function_definition):
+            for f in function_definition:
+                yield from process_node(f)
             yield '.section .note.GNU-stack,"",@progbits\n'
         case asm.Function(name, instructions):
             yield f'\t.global {name}\n'
@@ -172,5 +220,14 @@ def process_node(x) -> Generator[str]:
             yield '# \t No stack allocation \n'
         case asm.Allocate_Stack(offset):
             yield f'\tsubq ${offset}, %rsp\n'
+        case asm.DeallocateStack(offset):
+            yield f'\taddq ${offset}, %rsp\n'
+        case asm.Push(operand):
+            print(f'push value {operand}')
+            op1 = decode_operand(operand, asm.Size.Q)
+            print(f'op code is {op1}')
+            yield f'\tpushq {op1}\n'
+        case asm.Call(name):
+            yield f'\tcall {name}@PLT\n'
         case _:
             raise RuntimeError(f'Unandled instruction {x}')

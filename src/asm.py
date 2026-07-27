@@ -332,7 +332,7 @@ def convert_tacky_function(node: tacky.Function) -> Function:
 
     for i, param in enumerate(stack_args):
         assembly_param = Pseudo(param)
-        asm_instr.append(Mov(Size.L, Stack(i*8+8), assembly_param))
+        asm_instr.append(Mov(Size.L, Stack(-(i*8+16)), assembly_param))
 
     asm_instr.extend([x for y in node.body for x in convert_tacky_instr(y)])
     return Function(node.identifier, asm_instr)
@@ -360,7 +360,7 @@ def convert_tacky_func_call(node: tacky.FunCall) -> tuple[Instruction, ...]:
         instructions.append(Mov(Size.L, assembly_arg, Register(reg)))
 
     for tacky_arg in reversed(stack_args):
-        assembly_arg = convert_tacky_val(arg)
+        assembly_arg = convert_tacky_val(tacky_arg)
         match assembly_arg:
             # strangely, at the time of writing.
             # convert_tacky_val will never return Register()

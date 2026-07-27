@@ -22,6 +22,8 @@ def handle_args():
     group.add_argument('--tacky', action='store_true')
     group.add_argument('--validate', action='store_true')
 
+    parser.add_argument('-c', action='store_true')
+
     parser.add_argument('filepath', type=str)
 
     args = parser.parse_args()
@@ -72,12 +74,16 @@ def handle_args():
     asm_file_output = f'{file_basename}.s'
     asm_file_output = os.path.join(directory, f'{file_basename}.s')
     bin_file_output = os.path.join(directory, file_basename)
+    obj_file_output = os.path.join(directory, f'{file_basename}.o')
 
     with open(asm_file_output, 'w') as output:
         for x in blah:
             output.write(x)
 
-    gcc_command = ['gcc', '-o', bin_file_output, asm_file_output]
+    if args.c:
+        gcc_command = ['gcc', '-c', asm_file_output, '-o',  obj_file_output]
+    else:
+        gcc_command = ['gcc', '-o', bin_file_output, asm_file_output]
 
     result = subprocess.run(gcc_command,
                             capture_output=True,

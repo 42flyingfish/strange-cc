@@ -385,7 +385,6 @@ def convert_tacky_func_call(node: tacky.FunCall) -> tuple[Instruction, ...]:
     # Grab return value
     assembly_dst = convert_tacky_val(node.dst)
     instructions.append(Mov(Size.L, Register(Register_Enum.AX), assembly_dst))
-
     return tuple(instructions)
 
 
@@ -523,8 +522,6 @@ def instruction_fixup(func: Function, alloc_count: int) -> None:
                 scratch = Register(Register_Enum.R10)
                 modified_instr.append(Mov(size, Imm(a), scratch))
                 modified_instr.append(Idiv(size, scratch))
-            case Push():
-                return instr
             case _:
                 modified_instr.append(instr)
     func.instructions = modified_instr

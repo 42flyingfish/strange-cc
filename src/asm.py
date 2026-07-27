@@ -456,7 +456,9 @@ def replace_psuedo(func: Function) -> int:
 
 def instruction_fixup(func: Function, alloc_count: int) -> None:
     """Mov can't have mem address as both src and dst"""
-    modified_instr: list[Instruction] = [Allocate_Stack(alloc_count)]
+    # Addjust alloc_count for allignment
+    padding = 16 - (alloc_count % 16)
+    modified_instr: list[Instruction] = [Allocate_Stack(alloc_count + padding)]
 
     for instr in func.instructions:
         match instr:

@@ -85,7 +85,6 @@ def typecheck_dec(n: parser.Declaration,
 def typecheck_block(n: parser.Block,
                     s: SymbolTable) -> None:
     for x in n.block_items:
-        print(x)
         match x:
             case parser.S(stm):
                 typecheck_stm(stm, s)
@@ -197,4 +196,3 @@ def typecheck_exp(n: parser.Expression,
             typecheck_exp(f, s)
         case _:
             raise NotImplementedError(f'More junk {n}')
-    print(n)

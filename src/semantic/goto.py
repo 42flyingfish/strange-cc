@@ -39,7 +39,10 @@ def resolve_labels_program(n: parser.Program,
                            v: VariableMap) -> parser.Program:
     func_list: list[parser.FunDecl] = list()
     for x in n.function_definition:
-        func_list.append(resolve_labels_fun_decl(x, v))
+        local_map = VariableMap()
+        new_func = resolve_labels_fun_decl(x, local_map)
+        new_func = resolve_goto_fun_decl(new_func, local_map)
+        func_list.append(new_func)
     return replace(n, function_definition=func_list)
 
 
@@ -400,5 +403,5 @@ def resolve_program(p: parser.Program) -> parser.Program:
     # First pass collects and replaces label stms
     ast = resolve_labels_program(p, var_map)
     # Second pass replaces and validates goto labels
-    ast = resolve_goto_program(ast, var_map)
+    # ast = resolve_goto_program(ast, var_map)
     return ast

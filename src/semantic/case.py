@@ -159,7 +159,7 @@ def on_switch_compound(n: parser.Compound,
 @on_switch.register
 def on_switch_break(n: parser.Break,
                     t: CaseTable,
-                    l: bool) -> parser.Goto:
+                    l: bool) -> parser.Goto | parser.Break:
     # don't modify breaks in loops
     if l:
         return n
@@ -241,7 +241,8 @@ def on_switch_switch(n: parser.Switch,
 
     ladder: list[parser.Block_Item] = list()
 
-    ladder.append(parser.D(parser.VarDecl(id, n.exp)))
+    ladder.append(
+        parser.D(parser.VarDecl(parser.VariableDefinition(id, n.exp))))
 
     for key, value in t.top().items():
         if key == 'default':

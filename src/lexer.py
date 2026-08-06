@@ -299,6 +299,16 @@ class TkDefault:
     pass
 
 
+@dataclass
+class TkStatic:
+    pass
+
+
+@dataclass
+class TkExtern:
+    pass
+
+
 Token = (TkOpenParenthesis
          | TkCloseParenthesis
          | TkOpenBrace
@@ -356,7 +366,9 @@ Token = (TkOpenParenthesis
          | TkContinue
          | TkSwitch
          | TkCase
-         | TkDefault)
+         | TkDefault
+         | TkStatic
+         | TkExtern)
 
 
 def parse_constant(x: str) -> TkConstant:
@@ -405,6 +417,10 @@ def parse_identity_keyword(x: str) -> tuple[Token, int]:
             return (TkCase(), token_len)
         case 'default':
             return (TkDefault(), token_len)
+        case 'static':
+            return (TkStatic(), token_len)
+        case 'extern':
+            return (TkExtern(), token_len)
         case _:
             return (TkIdentifier(token_string), token_len)
 

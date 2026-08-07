@@ -3,6 +3,8 @@ from itertools import takewhile
 from string import ascii_letters, digits, whitespace
 from typing import Generator
 
+from utility import peek
+
 
 @dataclass
 class TkOpenBrace:
@@ -449,23 +451,23 @@ def tokenize_string(line: str) -> Generator[Token]:
                 index += 1
             case '/':
                 index += 1
-                peek = None if index > len(line) else line[index]
+                peeked = peek(line, index)
                 # checking for a line comment
-                if peek == '/':
+                if peeked == '/':
                     return
-                elif peek == '=':
+                elif peeked == '=':
                     index += 1
                     yield TkDivEqual()
                 else:
                     yield TkForwardSlash()
             case '-':
                 index += 1
-                peek = None if index > len(line) else line[index]
+                peeked = peek(line, index)
                 # checking for --
-                if peek == '-':
+                if peeked == '-':
                     yield TkDecrement()
                     index += 1
-                elif peek == '=':
+                elif peeked == '=':
                     yield TkSubEqual()
                     index += 1
                 else:
@@ -481,8 +483,8 @@ def tokenize_string(line: str) -> Generator[Token]:
                 index += 1
             case '*':
                 index += 1
-                peek = None if index > len(line) else line[index]
-                if peek == '=':
+                peeked = peek(line, index)
+                if peeked == '=':
                     index += 1
                     yield TkMulEqual()
                 else:
@@ -492,19 +494,19 @@ def tokenize_string(line: str) -> Generator[Token]:
                 index += 1
             case '+':
                 index += 1
-                peek = None if index > len(line) else line[index]
-                if peek == '=':
+                peeked = peek(line, index)
+                if peeked == '=':
                     yield TkPlusEqual()
                     index += 1
-                elif peek == '+':
+                elif peeked == '+':
                     yield TkIncrement()
                     index += 1
                 else:
                     yield TkPlus()
             case '%':
                 index += 1
-                peek = None if index > len(line) else line[index]
-                if peek == '=':
+                peeked = peek(line, index)
+                if peeked == '=':
                     index += 1
                     yield TkModEqual()
                 else:
@@ -512,63 +514,63 @@ def tokenize_string(line: str) -> Generator[Token]:
 
             case '<':
                 index += 1
-                peek = None if index > len(line) else line[index]
-                if peek == '<':
+                peeked = peek(line, index)
+                if peeked == '<':
                     index += 1
                     # Yuck
-                    peek = None if index > len(line) else line[index]
-                    if peek == '=':
+                    peeked = peek(line, index)
+                    if peeked == '=':
                         index += 1
                         yield TkLSEqual()
                     else:
                         yield TkLShift()
-                elif peek == '=':
+                elif peeked == '=':
                     yield TkLessEqual()
                     index += 1
                 else:
                     yield TkLessThan()
             case '>':
                 index += 1
-                peek = None if index > len(line) else line[index]
-                if peek == '>':
+                peeked = peek(line, index)
+                if peeked == '>':
                     index += 1
-                    peek = None if index > len(line) else line[index]
-                    if peek == '=':
+                    peeked = peek(line, index)
+                    if peeked == '=':
                         index += 1
                         yield TkRSEqual()
                     else:
                         yield TkRShift()
-                elif peek == '=':
+                elif peeked == '=':
                     yield TkGreaterEqual()
                     index += 1
                 else:
                     yield TkGreaterThan()
             case '&':
                 index += 1
-                peek = None if index > len(line) else line[index]
-                if peek == '&':
+                peeked = peek(line, index)
+                if peeked == '&':
                     yield TkLAnd()
                     index += 1
-                elif peek == '=':
+                elif peeked == '=':
                     yield TkBAndEqual()
                     index += 1
                 else:
                     yield TkBAnd()
             case '|':
                 index += 1
-                peek = None if index > len(line) else line[index]
-                if peek == '|':
+                peeked = peek(line, index)
+                if peeked == '|':
                     yield TkLOr()
                     index += 1
-                elif peek == '=':
+                elif peeked == '=':
                     yield TkBOrEqual()
                     index += 1
                 else:
                     yield TkBOr()
             case '^':
                 index += 1
-                peek = None if index > len(line) else line[index]
-                if peek == '=':
+                peeked = peek(line, index)
+                if peeked == '=':
                     yield TkXorEqual()
                     index += 1
                 else:

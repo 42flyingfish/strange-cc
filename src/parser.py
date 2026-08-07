@@ -3,7 +3,7 @@ from enum import Enum, auto
 from typing import Type
 
 import lexer
-from utility import Identifier
+from utility import Identifier, peek
 
 
 @dataclass(frozen=True)
@@ -731,8 +731,8 @@ def parse_factor(t: list[lexer.Token],
                 if id_result is None:
                     return None
                 id, index = id_result
-                peek = None if index > len(t) else t[index]
-                if isinstance(peek, lexer.TkOpenParenthesis):
+                peeked = peek(t, index)
+                if isinstance(peeked, lexer.TkOpenParenthesis):
                     index += 1
                     args_r = parse_args(t, index)
                     if args_r is None:
@@ -750,8 +750,8 @@ def parse_factor(t: list[lexer.Token],
         return None
     factor, index = result
     while True:
-        peek = None if index > len(t) else t[index]
-        match peek:
+        peeked = peek(t, index)
+        match peeked:
             case lexer.TkIncrement():
                 factor, index = Postfix(True, factor), index+1
             case lexer.TkDecrement():
@@ -872,9 +872,9 @@ def parse_expr(t: list[lexer.Token],
     if result is None:
         return None
     left, index = result
-    peek = None if index > len(t) else t[index]
-    while (prec := precedence(peek)) is not None and prec >= min_prec:
-        match peek:
+    peeked = peek(t, index)
+    while (prec := precedence(peeked)) is not None and prec >= min_prec:
+        match peeked:
             case lexer.TkEqual():
                 index = index + 1
                 right_result = parse_expr(t, index, prec)
@@ -921,7 +921,7 @@ def parse_expr(t: list[lexer.Token],
                     return None
                 right, index = result
                 left = Binary(binop, left, right)
-        peek = None if index > len(t) else t[index]
+        peeked = peek(t, index)
     return left, index
 
 
@@ -949,8 +949,8 @@ def parse_params(t: list[lexer.Token],
     # At the current moment, the only type supported in the compiler
     # is int and as such, this will not parse something like void *
 
-    peek = None if index > len(t) else t[index]
-    match peek:
+    peeked = peek(t, index)
+    match peeked:
         case lexer.TkVoid():
             return params, index+1
         case lexer.TkInt():
@@ -996,8 +996,8 @@ def parse_func_decl(t: list[lexer.Token],
     if not expect_tk(lexer.TkCloseParenthesis, t, index):
         return None
     index += 1
-    peek = None if index > len(t) else t[index]
-    match peek:
+    peeked = peek(t, index)
+    match peeked:
         case lexer.TkSemicolon():
             return FunDecl(Function(func_ident, func_params, None)), index+1
         case lexer.TkOpenBrace():
